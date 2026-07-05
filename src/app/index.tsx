@@ -1,98 +1,83 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from "expo-router";
+import {
+  SafeAreaView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+export default function RoleSelect() {
+  const router = useRouter();
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
   return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" />
+      <View style={styles.content}>
+        <Text style={styles.title}>Attend</Text>
+        <Text style={styles.subtitle}>Choose how you'd like to sign in</Text>
 
-export default function HomeScreen() {
-  return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
+        <TouchableOpacity
+          style={[styles.card, styles.facultyCard]}
+          onPress={() => router.push("/faculty/login")}
+        >
+          <Text style={styles.cardEmoji}>🧑‍🏫</Text>
+          <Text style={styles.cardTitle}>I'm Faculty</Text>
+          <Text style={styles.cardSub}>Start sessions, view attendance</Text>
+        </TouchableOpacity>
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
+        <TouchableOpacity
+          style={[styles.card, styles.studentCard]}
+          onPress={() => router.push("/student/login")}
+        >
+          <Text style={styles.cardEmoji}>🎓</Text>
+          <Text style={styles.cardTitle}>I'm a Student</Text>
+          <Text style={styles.cardSub}>Scan QR to mark attendance</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  container: { flex: 1, backgroundColor: "#0D0D0D" },
+  content: {
     flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
-  },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
+    justifyContent: "center",
+    paddingHorizontal: 24,
+    gap: 16,
   },
   title: {
-    textAlign: 'center',
+    color: "#fff",
+    fontSize: 34,
+    fontWeight: "800",
+    letterSpacing: -1,
+    textAlign: "center",
+    marginBottom: 4,
   },
-  code: {
-    textTransform: 'uppercase',
+  subtitle: {
+    color: "rgba(255,255,255,0.45)",
+    fontSize: 14,
+    textAlign: "center",
+    marginBottom: 24,
   },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+  card: {
+    borderRadius: 20,
+    padding: 24,
+    borderWidth: 1,
+    alignItems: "center",
+    gap: 6,
   },
+  facultyCard: {
+    backgroundColor: "rgba(200,240,77,0.08)",
+    borderColor: "rgba(200,240,77,0.25)",
+  },
+  studentCard: {
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderColor: "rgba(255,255,255,0.1)",
+  },
+  cardEmoji: { fontSize: 32, marginBottom: 4 },
+  cardTitle: { color: "#fff", fontSize: 18, fontWeight: "800" },
+  cardSub: { color: "rgba(255,255,255,0.4)", fontSize: 13 },
 });
