@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { markSynced, saveAttendance } from "../../../../lib/db";
 import { supabase } from "../../../../lib/supabase";
+import { useAuthStore } from "../../../../stores/authStore";
 
 const { width } = Dimensions.get("window");
 const SCAN_SIZE = width * 0.7;
@@ -49,12 +50,22 @@ export default function QRScanner() {
     Vibration.vibrate(100);
 
     try {
-      const session: SessionPayload = JSON.parse(data);
+      // 1. Parse incoming QR payload string
+      const session: SessionPayload & { schoolId?: string } = JSON.parse(data);
 
       const {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Not logged in");
+
+      // 2. Fetch the student's current school ID using Zustand state
+      const studentSchoolId = useAuthStore.getState().schoolId;
+
+      // 3. Multi-tenant Guard: block cross-school attendance hijacking
+      if (session.schoolId && session.schoolId !== studentSchoolId) {
+        setError("Access Denied: This session belongs to a different school.");
+        return;
+      }
 
       const isLate = checkIfLate(session);
       setStatus(isLate ? "late" : "present");
@@ -62,7 +73,7 @@ export default function QRScanner() {
       const attendanceId = `att_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
       const scannedAt = new Date().toISOString();
 
-      // Save locally first (offline-first)
+      // 4. Save locally first (offline-first architecture)
       await saveAttendance({
         id: attendanceId,
         session_id: session.id,
@@ -70,11 +81,10 @@ export default function QRScanner() {
         scanned_at: scannedAt,
         status: isLate ? "late" : "present",
         token_used: session.token,
+        school_id: studentSchoolId,
       });
 
-      // ...same field added to the Supabase insert object
-
-      // Try syncing immediately, but don't block the student's confirmation
+      // 5. Try syncing immediately to Supabase
       try {
         const { error: insertError } = await supabase
           .from("attendance")
@@ -84,6 +94,7 @@ export default function QRScanner() {
             student_id: user.id,
             scanned_at: scannedAt,
             status: isLate ? "late" : "present",
+            school_id: studentSchoolId,
           });
         if (insertError) throw insertError;
         await markSynced("attendance", attendanceId);
