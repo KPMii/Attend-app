@@ -10,7 +10,7 @@
     "@react-navigation/native-stack": "^7.17.6",
     "@supabase/supabase-js": "^2.110.0",
     "babel-preset-expo": "^56.0.15",
-    "expo": "57",
+    "expo": "^57.0.2",
     "expo-camera": "~57.0.0",
     "expo-constants": "~57.0.3",
     "expo-crypto": "~57.0.0",
@@ -20,7 +20,7 @@
     "expo-image": "~57.0.0",
     "expo-linking": "~57.0.1",
     "expo-router": "~57.0.3",
-    "expo-splash-screen": "~57.0.2",
+    "expo-splash-screen": "^57.0.2",
     "expo-sqlite": "~57.0.0",
     "expo-status-bar": "~57.0.0",
     "expo-symbols": "~57.0.0",
@@ -31,6 +31,7 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.86.0",
+    "react-native-css-interop": "^0.2.6",
     "react-native-gesture-handler": "~2.32.0",
     "react-native-qrcode": "^0.2.7",
     "react-native-qrcode-svg": "^6.3.21",
@@ -43,6 +44,9 @@
     "tailwindcss": "^3.4.19",
     "zustand": "^5.0.14"
   },
+  "overrides": {
+  "lightningcss": "1.32.0"
+},
   "devDependencies": {
     "@types/react": "~19.2.2",
     "babel-preset-expo": "~57.0.0",
@@ -58,5 +62,9 @@
     "web": "expo start --web",
     "lint": "expo lint"
   },
-  "private": true
+  "private": true,
+  "optionalDependencies": {
+    "lightningcss-win32-x64-msvc": "^1.32.0"
+  }
+  
 }
