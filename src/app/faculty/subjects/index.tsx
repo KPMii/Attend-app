@@ -43,21 +43,27 @@ export default function SubjectList() {
   const addSubject = async () => {
     if (!newName.trim()) return;
 
-    const debugUser = await supabase.auth.getUser(); // TO SEE IF THERE IS ERROR
-    console.log("DEBUG logged in as:", debugUser.data.user?.email); // TO SEE IF THERE IS ERROR
-
     const {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) return;
 
-    const currentSchoolId = useAuthStore.getState().schoolId;
-    console.log("DEBUG schoolId:", currentSchoolId); // TO SEE IF THERE IS ERROR
+    // Fetch school_id fresh, live, instead of trusting the cached store
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("school_id")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile?.school_id) {
+      console.error("[Subjects] No school_id found for this user");
+      return;
+    }
 
     const { error } = await supabase.from("subjects").insert({
       name: newName.trim(),
       faculty_id: user.id,
-      school_id: currentSchoolId,
+      school_id: profile.school_id,
     });
 
     if (!error) {
