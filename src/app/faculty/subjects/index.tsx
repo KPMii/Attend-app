@@ -1,16 +1,17 @@
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-    FlatList,
-    SafeAreaView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  FlatList,
+  SafeAreaView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { supabase } from "../../../../lib/supabase";
+import { useAuthStore } from "../../../../stores/authStore";
 
 type Subject = { id: string; name: string };
 
@@ -22,10 +23,15 @@ export default function SubjectList() {
 
   const fetchSubjects = async () => {
     setLoading(true);
+
+    const currentSchoolId = useAuthStore.getState().schoolId;
+
     const { data } = await supabase
       .from("subjects")
       .select("id, name")
+      .eq("school_id", currentSchoolId)
       .order("name");
+
     if (data) setSubjects(data);
     setLoading(false);
   };
@@ -36,18 +42,29 @@ export default function SubjectList() {
 
   const addSubject = async () => {
     if (!newName.trim()) return;
+
+    const debugUser = await supabase.auth.getUser(); // TO SEE IF THERE IS ERROR
+    console.log("DEBUG logged in as:", debugUser.data.user?.email); // TO SEE IF THERE IS ERROR
+
     const {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { error } = await supabase
-      .from("subjects")
-      .insert({ name: newName.trim(), faculty_id: user.id });
+    const currentSchoolId = useAuthStore.getState().schoolId;
+    console.log("DEBUG schoolId:", currentSchoolId); // TO SEE IF THERE IS ERROR
+
+    const { error } = await supabase.from("subjects").insert({
+      name: newName.trim(),
+      faculty_id: user.id,
+      school_id: currentSchoolId,
+    });
 
     if (!error) {
       setNewName("");
       fetchSubjects();
+    } else {
+      console.error("[Subjects] Insert error:", error.message);
     }
   };
 

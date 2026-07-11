@@ -12,9 +12,12 @@ type AuthState = {
   loading: boolean;
   hydrate: () => Promise<void>;
   logout: () => Promise<void>;
+  subscribeToProfileChanges: () => void;
 };
 
-export const useAuthStore = create<AuthState>((set) => ({
+let profileChannel: ReturnType<typeof supabase.channel> | null = null;
+
+export const useAuthStore = create<AuthState>((set, get) => ({
   userId: null,
   role: null,
   fullName: null,
@@ -53,9 +56,48 @@ export const useAuthStore = create<AuthState>((set) => ({
       schoolIdNo: profile?.school_id_no ?? null,
       loading: false,
     });
+
+    // Start listening for live changes to THIS user's profile
+    get().subscribeToProfileChanges();
+  },
+
+  subscribeToProfileChanges: () => {
+    const userId = get().userId;
+    if (!userId) return;
+
+    // Avoid duplicate subscriptions
+    if (profileChannel) {
+      supabase.removeChannel(profileChannel);
+    }
+
+    profileChannel = supabase
+      .channel(`profile-changes-${userId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "profiles",
+          filter: `id=eq.${userId}`,
+        },
+        (payload) => {
+          console.log("[AuthStore] Profile updated live:", payload.new);
+          set({
+            role: payload.new.role ?? null,
+            fullName: payload.new.full_name ?? null,
+            schoolId: payload.new.school_id ?? null,
+            schoolIdNo: payload.new.school_id_no ?? null,
+          });
+        },
+      )
+      .subscribe();
   },
 
   logout: async () => {
+    if (profileChannel) {
+      supabase.removeChannel(profileChannel);
+      profileChannel = null;
+    }
     await supabase.auth.signOut();
     set({
       userId: null,

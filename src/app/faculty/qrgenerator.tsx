@@ -14,9 +14,9 @@ import {
   View,
 } from "react-native";
 import QRCode from "react-native-qrcode-svg";
+import { logAction } from "../../../lib/audit";
 import { getDB, markSynced, saveSession } from "../../../lib/db";
 import { supabase } from "../../../lib/supabase";
-import { useAuthStore } from "../../../stores/authStore";
 
 const { width } = Dimensions.get("window");
 const QR_INTERVAL = 15;
@@ -42,7 +42,7 @@ async function syncSessionToSupabase(session: SessionPayload) {
     subject: session.subject,
     subject_id: session.subjectId,
     room: session.room,
-    room_id: session.roomId,
+    section_id: session.sectionId,
     faculty_id: session.facultyId,
     token: session.token,
     created_at: session.createdAt,
@@ -83,7 +83,7 @@ type SessionPayload = {
   subject: string;
   subjectId: string | null;
   room: string;
-  roomId: string | null;
+  sectionId: string | null;
   facultyId: string;
   token: string;
   createdAt: string;
@@ -176,8 +176,12 @@ export default function QRGenerator() {
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(
     null,
   );
-  const [rooms, setRooms] = useState<{ id: string; name: string }[]>([]);
-  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
+  const [sections, setSections] = useState<
+    { id: string; name: string; room: string | null }[]
+  >([]);
+  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(
+    null,
+  );
   const [duration, setDuration] = useState("60");
   const [isActive, setIsActive] = useState(false);
   const [sessionId] = useState(generateSessionId());
@@ -199,8 +203,9 @@ export default function QRGenerator() {
 
   const selectedSubjectName =
     subjects.find((s) => s.id === selectedSubjectId)?.name ?? "";
-  const selectedRoomName =
-    rooms.find((r) => r.id === selectedRoomId)?.name ?? "";
+  const selectedSection = sections.find((s) => s.id === selectedSectionId);
+  const selectedSectionName = selectedSection?.name ?? "";
+  const selectedRoomName = selectedSection?.room ?? "";
 
   useEffect(() => {
     supabase
@@ -212,22 +217,19 @@ export default function QRGenerator() {
       });
 
     supabase
-      .from("rooms")
-      .select("id, name")
+      .from("sections")
+      .select("id, name, room")
       .order("name")
       .then(({ data }) => {
-        if (data) setRooms(data);
+        if (data) setSections(data);
       });
   }, []);
 
-  const buildSession = async (
-    t: string,
-  ): Promise<SessionPayload & { schoolId: string | null }> => {
+  const buildSession = async (t: string): Promise<SessionPayload> => {
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
-    const currentSchoolId = useAuthStore.getState().schoolId;
     const createdAt = new Date().toISOString();
     const expiresAt = new Date(
       Date.now() + parseInt(duration) * 60 * 1000,
@@ -239,7 +241,7 @@ export default function QRGenerator() {
       subject: selectedSubjectName,
       subjectId: selectedSubjectId,
       room: selectedRoomName,
-      roomId: selectedRoomId,
+      sectionId: selectedSectionId,
       facultyId: user?.id ?? "unknown",
       token: t,
       createdAt,
@@ -247,7 +249,6 @@ export default function QRGenerator() {
       role: "faculty",
       signature,
       lateThresholdMinutes: lateThreshold,
-      schoolId: currentSchoolId,
     };
   };
 
@@ -280,7 +281,7 @@ export default function QRGenerator() {
   };
 
   const startSession = async () => {
-    if (!selectedSubjectId || !selectedRoomId || !duration.trim()) return;
+    if (!selectedSubjectId || !selectedSectionId || !duration.trim()) return;
 
     const mins = parseInt(duration);
     if (isNaN(mins) || mins <= 0) return;
@@ -301,6 +302,11 @@ export default function QRGenerator() {
     try {
       await syncSessionToSupabase(session);
       setSyncStatus("synced");
+      logAction("session_created", {
+        tableName: "sessions",
+        recordId: session.id,
+        description: `Started ${selectedSubjectName} in ${selectedSectionName}`,
+      });
     } catch {
       setSyncStatus("offline");
     }
@@ -374,7 +380,8 @@ export default function QRGenerator() {
           ? "● Offline — queued"
           : "○ Not started";
 
-  const canStart = !!selectedSubjectId && !!selectedRoomId && !!duration.trim();
+  const canStart =
+    !!selectedSubjectId && !!selectedSectionId && !!duration.trim();
 
   return (
     <SafeAreaView style={styles.container}>
@@ -441,43 +448,52 @@ export default function QRGenerator() {
             )}
 
             <View style={styles.subjectHeaderRow}>
-              <Text style={styles.label}>Room</Text>
-              <TouchableOpacity onPress={() => router.push("/faculty/rooms")}>
-                <Text style={styles.manageLink}>Manage Rooms</Text>
+              <Text style={styles.label}>Section</Text>
+              <TouchableOpacity
+                onPress={() => router.push("/faculty/sections")}
+              >
+                <Text style={styles.manageLink}>Manage Sections</Text>
               </TouchableOpacity>
             </View>
 
-            {rooms.length === 0 ? (
+            {sections.length === 0 ? (
               <TouchableOpacity
                 style={styles.noSubjectsCard}
-                onPress={() => router.push("/faculty/rooms")}
+                onPress={() => router.push("/faculty/sections")}
               >
                 <Text style={styles.noSubjectsText}>
-                  No rooms yet — tap to add one
+                  No sections yet — tap to add one
                 </Text>
               </TouchableOpacity>
             ) : (
               <View style={styles.subjectChipRow}>
-                {rooms.map((r) => (
+                {sections.map((s) => (
                   <TouchableOpacity
-                    key={r.id}
+                    key={s.id}
                     style={[
                       styles.subjectChip,
-                      selectedRoomId === r.id && styles.subjectChipActive,
+                      selectedSectionId === s.id && styles.subjectChipActive,
                     ]}
-                    onPress={() => setSelectedRoomId(r.id)}
+                    onPress={() => setSelectedSectionId(s.id)}
                   >
                     <Text
                       style={[
                         styles.subjectChipText,
-                        selectedRoomId === r.id && styles.subjectChipTextActive,
+                        selectedSectionId === s.id &&
+                          styles.subjectChipTextActive,
                       ]}
                     >
-                      {r.name}
+                      {s.name}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
+            )}
+
+            {selectedSection && (
+              <Text style={styles.roomHint}>
+                Room: {selectedRoomName || "—"}
+              </Text>
             )}
 
             <Text style={styles.label}>Session Duration (minutes)</Text>
@@ -539,7 +555,9 @@ export default function QRGenerator() {
           <View style={styles.activeSession}>
             <View style={styles.sessionInfo}>
               <Text style={styles.sessionSubject}>{selectedSubjectName}</Text>
-              <Text style={styles.sessionRoom}>{selectedRoomName}</Text>
+              <Text style={styles.sessionRoom}>
+                {selectedSectionName} · {selectedRoomName}
+              </Text>
               <View style={styles.sessionMeta}>
                 <Text style={styles.sessionMetaText}>Session ends in</Text>
                 <Text style={styles.sessionTimer}>
@@ -620,11 +638,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 12,
   },
-  manageLink: {
-    color: "#C8F04D",
-    fontSize: 12,
-    fontWeight: "700",
-  },
+  manageLink: { color: "#C8F04D", fontSize: 12, fontWeight: "700" },
   noSubjectsCard: {
     backgroundColor: "rgba(255,255,255,0.05)",
     borderWidth: 1,
@@ -653,6 +667,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   subjectChipTextActive: { color: "#C8F04D" },
+  roomHint: { color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 4 },
   input: {
     backgroundColor: "rgba(255,255,255,0.06)",
     borderWidth: 1,

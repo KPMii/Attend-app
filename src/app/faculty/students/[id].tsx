@@ -1,15 +1,16 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
+import { logAction } from "../../../../lib/audit";
 import { supabase } from "../../../../lib/supabase";
 
 type AttendanceRecord = {
@@ -75,6 +76,11 @@ export default function StudentDetail() {
     setSaving(false);
     if (!error) {
       setSaved(true);
+      logAction("profile_updated", {
+        tableName: "profiles",
+        recordId: id as string,
+        description: `Updated student profile: ${fullName}`,
+      });
       setTimeout(() => setSaved(false), 2000);
     }
   };

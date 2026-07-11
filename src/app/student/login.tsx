@@ -32,6 +32,7 @@ export default function StudentLogin() {
       await studentLogin(schoolIdNo.trim(), password);
       router.replace("/student");
     } catch (err) {
+      console.log("LOGIN ERROR:", err);
       setError("Invalid School ID or password. Please try again.");
     } finally {
       setLoading(false);
