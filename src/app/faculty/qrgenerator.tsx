@@ -407,7 +407,7 @@ export default function QRGenerator() {
             <View style={styles.subjectHeaderRow}>
               <Text style={styles.label}>Subject</Text>
               <TouchableOpacity
-                onPress={() => router.push("/faculty/subjects")}
+                onPress={() => router.push("/admin/subjects")}
               >
                 <Text style={styles.manageLink}>Manage Subjects</Text>
               </TouchableOpacity>
@@ -416,7 +416,7 @@ export default function QRGenerator() {
             {subjects.length === 0 ? (
               <TouchableOpacity
                 style={styles.noSubjectsCard}
-                onPress={() => router.push("/faculty/subjects")}
+                onPress={() => router.push("/admin/subjects")}
               >
                 <Text style={styles.noSubjectsText}>
                   No subjects yet — tap to add one
@@ -450,7 +450,7 @@ export default function QRGenerator() {
             <View style={styles.subjectHeaderRow}>
               <Text style={styles.label}>Section</Text>
               <TouchableOpacity
-                onPress={() => router.push("/faculty/sections")}
+                onPress={() => router.push("/admin/sections")}
               >
                 <Text style={styles.manageLink}>Manage Sections</Text>
               </TouchableOpacity>
@@ -459,7 +459,7 @@ export default function QRGenerator() {
             {sections.length === 0 ? (
               <TouchableOpacity
                 style={styles.noSubjectsCard}
-                onPress={() => router.push("/faculty/sections")}
+                onPress={() => router.push("/admin/sections")}
               >
                 <Text style={styles.noSubjectsText}>
                   No sections yet — tap to add one

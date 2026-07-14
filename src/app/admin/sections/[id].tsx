@@ -1,20 +1,14 @@
 import { Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+  SafeAreaView, ScrollView, StatusBar, StyleSheet, Text,
+  TextInput, TouchableOpacity, View,
 } from "react-native";
 import { supabase } from "../../../../lib/supabase";
 
 type Student = { id: string; full_name: string; school_id_no: string | null };
 
-export default function SectionDetail() {
+export default function AdminSectionDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const [sectionName, setSectionName] = useState("");
@@ -32,11 +26,7 @@ export default function SectionDetail() {
   }, [id]);
 
   const loadSection = async () => {
-    const { data } = await supabase
-      .from("sections")
-      .select("name, room")
-      .eq("id", id)
-      .single();
+    const { data } = await supabase.from("sections").select("name, room").eq("id", id).single();
     if (data) {
       setSectionName(data.name);
       setRoom(data.room ?? "");
@@ -49,10 +39,7 @@ export default function SectionDetail() {
       .from("section_enrollments")
       .select("student_id, profiles(id, full_name, school_id_no)")
       .eq("section_id", id);
-
-    if (data) {
-      setRoster(data.map((r: any) => r.profiles).filter(Boolean));
-    }
+    if (data) setRoster(data.map((r: any) => r.profiles).filter(Boolean));
     setLoading(false);
   };
 
@@ -72,13 +59,10 @@ export default function SectionDetail() {
       setSearchError("No student found with that School ID");
       return;
     }
-
-    const alreadyEnrolled = roster.some((r) => r.id === data.id);
-    if (alreadyEnrolled) {
+    if (roster.some((r) => r.id === data.id)) {
       setSearchError("This student is already in the roster");
       return;
     }
-
     setFoundStudent(data);
   };
 
@@ -87,7 +71,6 @@ export default function SectionDetail() {
     const { error } = await supabase
       .from("section_enrollments")
       .insert({ section_id: id, student_id: foundStudent.id });
-
     if (!error) {
       setSearchId("");
       setFoundStudent(null);
@@ -96,11 +79,7 @@ export default function SectionDetail() {
   };
 
   const removeFromRoster = async (studentId: string) => {
-    await supabase
-      .from("section_enrollments")
-      .delete()
-      .eq("section_id", id)
-      .eq("student_id", studentId);
+    await supabase.from("section_enrollments").delete().eq("section_id", id).eq("student_id", studentId);
     loadRoster();
   };
 
@@ -168,69 +147,32 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#0D0D0D" },
   scroll: { padding: 24, gap: 8, paddingBottom: 48 },
   title: { color: "#fff", fontSize: 26, fontWeight: "800" },
-  roomText: {
-    color: "rgba(255,255,255,0.4)",
-    fontSize: 13,
-    marginTop: 2,
-    marginBottom: 8,
-  },
+  roomText: { color: "rgba(255,255,255,0.4)", fontSize: 13, marginTop: 2, marginBottom: 8 },
   sectionTitle: {
-    color: "rgba(255,255,255,0.5)",
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 0.5,
-    textTransform: "uppercase",
-    marginTop: 20,
-    marginBottom: 4,
+    color: "rgba(255,255,255,0.5)", fontSize: 12, fontWeight: "700", letterSpacing: 0.5,
+    textTransform: "uppercase", marginTop: 20, marginBottom: 4,
   },
   addRow: { flexDirection: "row", gap: 8 },
   input: {
-    flex: 1,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    color: "#fff",
-    fontSize: 14,
+    flex: 1, backgroundColor: "rgba(255,255,255,0.06)", borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)", borderRadius: 14, paddingHorizontal: 16,
+    paddingVertical: 12, color: "#fff", fontSize: 14,
   },
-  searchBtn: {
-    backgroundColor: "rgba(255,255,255,0.1)",
-    borderRadius: 14,
-    paddingHorizontal: 20,
-    justifyContent: "center",
-  },
+  searchBtn: { backgroundColor: "rgba(255,255,255,0.1)", borderRadius: 14, paddingHorizontal: 20, justifyContent: "center" },
   searchBtnText: { color: "#fff", fontWeight: "700" },
   errorText: { color: "#F2816B", fontSize: 12, marginTop: 4 },
   foundCard: {
-    backgroundColor: "rgba(200,240,77,0.08)",
-    borderWidth: 1,
-    borderColor: "rgba(200,240,77,0.25)",
-    borderRadius: 14,
-    padding: 14,
-    marginTop: 8,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    backgroundColor: "rgba(200,240,77,0.08)", borderWidth: 1, borderColor: "rgba(200,240,77,0.25)",
+    borderRadius: 14, padding: 14, marginTop: 8, flexDirection: "row",
+    justifyContent: "space-between", alignItems: "center",
   },
   foundName: { color: "#fff", fontSize: 14, fontWeight: "600" },
   foundId: { color: "rgba(255,255,255,0.4)", fontSize: 12 },
-  addBtn: {
-    backgroundColor: "#C8F04D",
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
+  addBtn: { backgroundColor: "#C8F04D", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
   addBtnText: { color: "#0D0D0D", fontWeight: "800", fontSize: 12 },
   rosterRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 6,
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 12, padding: 14, marginBottom: 6,
   },
   rosterName: { color: "#fff", fontSize: 14, fontWeight: "600" },
   rosterId: { color: "rgba(255,255,255,0.4)", fontSize: 12 },

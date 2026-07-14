@@ -1,16 +1,8 @@
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, Stack } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+  SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, View,
 } from "react-native";
-import { logAction } from "../../../../lib/audit";
 import { supabase } from "../../../../lib/supabase";
 
 type AttendanceRecord = {
@@ -20,17 +12,13 @@ type AttendanceRecord = {
   sessions: { subject: string; room: string; created_at: string } | null;
 };
 
-export default function StudentDetail() {
+export default function StudentDetailReadOnly() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const router = useRouter();
 
   const [fullName, setFullName] = useState("");
   const [schoolIdNo, setSchoolIdNo] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
-  const [loadingRecords, setLoadingRecords] = useState(true);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!id) return;
@@ -44,7 +32,6 @@ export default function StudentDetail() {
       .select("full_name, school_id_no")
       .eq("id", id)
       .single();
-
     if (data) {
       setFullName(data.full_name ?? "");
       setSchoolIdNo(data.school_id_no ?? "");
@@ -52,37 +39,15 @@ export default function StudentDetail() {
   };
 
   const loadAttendance = async () => {
-    setLoadingRecords(true);
+    setLoading(true);
     const { data } = await supabase
       .from("attendance")
       .select("id, status, scanned_at, sessions(subject, room, created_at)")
       .eq("student_id", id)
       .order("scanned_at", { ascending: false })
       .limit(50);
-
     if (data) setRecords(data as any);
-    setLoadingRecords(false);
-  };
-
-  const handleSave = async () => {
-    setSaving(true);
-    setSaved(false);
-
-    const { error } = await supabase
-      .from("profiles")
-      .update({ full_name: fullName.trim(), school_id_no: schoolIdNo.trim() })
-      .eq("id", id);
-
-    setSaving(false);
-    if (!error) {
-      setSaved(true);
-      logAction("profile_updated", {
-        tableName: "profiles",
-        recordId: id as string,
-        description: `Updated student profile: ${fullName}`,
-      });
-      setTimeout(() => setSaved(false), 2000);
-    }
+    setLoading(false);
   };
 
   const presentCount = records.filter((r) => r.status === "present").length;
@@ -93,34 +58,11 @@ export default function StudentDetail() {
       <Stack.Screen options={{ title: "Student Detail" }} />
       <StatusBar barStyle="light-content" />
       <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.sectionTitle}>Edit Profile</Text>
+        <Text style={styles.sectionTitle}>Profile</Text>
         <View style={styles.card}>
-          <Text style={styles.label}>Full Name</Text>
-          <TextInput
-            style={styles.input}
-            value={fullName}
-            onChangeText={setFullName}
-            placeholderTextColor="rgba(255,255,255,0.25)"
-          />
-
-          <Text style={styles.label}>School ID No.</Text>
-          <TextInput
-            style={styles.input}
-            value={schoolIdNo}
-            onChangeText={setSchoolIdNo}
-            autoCapitalize="characters"
-            placeholderTextColor="rgba(255,255,255,0.25)"
-          />
-
-          <TouchableOpacity
-            style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
-            onPress={handleSave}
-            disabled={saving}
-          >
-            <Text style={styles.saveBtnText}>
-              {saving ? "Saving..." : saved ? "✓ Saved" : "Save Changes"}
-            </Text>
-          </TouchableOpacity>
+          <Text style={styles.name}>{fullName}</Text>
+          <Text style={styles.idText}>School ID: {schoolIdNo}</Text>
+          <Text style={styles.hint}>Contact your admin to edit this record.</Text>
         </View>
 
         <Text style={styles.sectionTitle}>Attendance Summary</Text>
@@ -130,15 +72,13 @@ export default function StudentDetail() {
             <Text style={styles.summaryLabel}>Present</Text>
           </View>
           <View style={styles.summaryBox}>
-            <Text style={[styles.summaryNumber, { color: "#F2816B" }]}>
-              {lateCount}
-            </Text>
+            <Text style={[styles.summaryNumber, { color: "#F2816B" }]}>{lateCount}</Text>
             <Text style={styles.summaryLabel}>Late</Text>
           </View>
         </View>
 
         <Text style={styles.sectionTitle}>Recent Attendance</Text>
-        {loadingRecords ? (
+        {loading ? (
           <Text style={styles.empty}>Loading...</Text>
         ) : records.length === 0 ? (
           <Text style={styles.empty}>No attendance records yet</Text>
@@ -146,20 +86,12 @@ export default function StudentDetail() {
           records.map((r) => (
             <View key={r.id} style={styles.recordRow}>
               <View>
-                <Text style={styles.recordSubject}>
-                  {r.sessions?.subject ?? "Unknown"}
-                </Text>
+                <Text style={styles.recordSubject}>{r.sessions?.subject ?? "Unknown"}</Text>
                 <Text style={styles.recordMeta}>
-                  {r.sessions?.room ?? ""} ·{" "}
-                  {new Date(r.scanned_at).toLocaleString()}
+                  {r.sessions?.room ?? ""} · {new Date(r.scanned_at).toLocaleString()}
                 </Text>
               </View>
-              <Text
-                style={[
-                  styles.statusBadge,
-                  { color: r.status === "late" ? "#F2816B" : "#C8F04D" },
-                ]}
-              >
+              <Text style={[styles.statusBadge, { color: r.status === "late" ? "#F2816B" : "#C8F04D" }]}>
                 {r.status === "late" ? "Late" : "Present"}
               </Text>
             </View>
@@ -174,63 +106,20 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#0D0D0D" },
   scroll: { padding: 24, gap: 12, paddingBottom: 48 },
   sectionTitle: {
-    color: "rgba(255,255,255,0.5)",
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 0.5,
-    textTransform: "uppercase",
-    marginTop: 16,
+    color: "rgba(255,255,255,0.5)", fontSize: 12, fontWeight: "700",
+    letterSpacing: 0.5, textTransform: "uppercase", marginTop: 16,
   },
-  card: {
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderRadius: 16,
-    padding: 16,
-    gap: 8,
-  },
-  label: {
-    color: "rgba(255,255,255,0.5)",
-    fontSize: 11,
-    fontWeight: "600",
-    textTransform: "uppercase",
-    marginTop: 6,
-  },
-  input: {
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: "#fff",
-    fontSize: 14,
-  },
-  saveBtn: {
-    backgroundColor: "#C8F04D",
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: "center",
-    marginTop: 12,
-  },
-  saveBtnDisabled: { opacity: 0.5 },
-  saveBtnText: { color: "#0D0D0D", fontSize: 14, fontWeight: "800" },
+  card: { backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 16, padding: 16, gap: 4 },
+  name: { color: "#fff", fontSize: 18, fontWeight: "700" },
+  idText: { color: "rgba(255,255,255,0.5)", fontSize: 13 },
+  hint: { color: "rgba(255,255,255,0.3)", fontSize: 12, marginTop: 8, fontStyle: "italic" },
   summaryRow: { flexDirection: "row", gap: 12 },
-  summaryBox: {
-    flex: 1,
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderRadius: 14,
-    padding: 16,
-    alignItems: "center",
-  },
+  summaryBox: { flex: 1, backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 14, padding: 16, alignItems: "center" },
   summaryNumber: { color: "#C8F04D", fontSize: 24, fontWeight: "800" },
   summaryLabel: { color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 4 },
   recordRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 8,
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 12, padding: 14, marginBottom: 8,
   },
   recordSubject: { color: "#fff", fontSize: 14, fontWeight: "600" },
   recordMeta: { color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 2 },

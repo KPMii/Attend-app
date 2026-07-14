@@ -1,72 +1,81 @@
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-  FlatList,
-  SafeAreaView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+  FlatList, SafeAreaView, StatusBar, StyleSheet, Text,
+  TextInput, TouchableOpacity, View,
 } from "react-native";
 import { supabase } from "../../../../lib/supabase";
 
 type Section = { id: string; name: string; room: string | null };
 
-export default function SectionList() {
+export default function AdminSections() {
   const router = useRouter();
   const [sections, setSections] = useState<Section[]>([]);
   const [newName, setNewName] = useState("");
   const [newRoom, setNewRoom] = useState("");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const getMySchoolId = async (): Promise<string | null> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+    const { data: profile } = await supabase
+      .from("profiles").select("school_id").eq("id", user.id).single();
+    return profile?.school_id ?? null;
+  };
 
   const fetchSections = async () => {
     setLoading(true);
+    const schoolId = await getMySchoolId();
+    if (!schoolId) {
+      setError("No school assigned to this account.");
+      setLoading(false);
+      return;
+    }
     const { data } = await supabase
-      .from("sections")
-      .select("id, name, room")
-      .order("name");
+      .from("sections").select("id, name, room").eq("school_id", schoolId).order("name");
     if (data) setSections(data);
     setLoading(false);
   };
 
-  useEffect(() => {
-    fetchSections();
-  }, []);
+  useEffect(() => { fetchSections(); }, []);
 
   const addSection = async () => {
-    if (!newName.trim()) return;
+    if (!newName.trim() || !newRoom.trim()) return;
+    setError(null);
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // Fetch school_id fresh, live, instead of trusting the cached store
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("school_id")
-      .eq("id", user.id)
-      .single();
-
-    if (!profile?.school_id) {
-      console.error("[Subjects] No school_id found for this user");
+    const schoolId = await getMySchoolId();
+    if (!schoolId) {
+      setError("No school assigned to this account.");
       return;
     }
 
-    const { error } = await supabase.from("subjects").insert({
+    const { error: insertError } = await supabase.from("sections").insert({
       name: newName.trim(),
+      room: newRoom.trim(),
       faculty_id: user.id,
-      school_id: profile.school_id,
+      school_id: schoolId,
     });
 
-    if (!error) {
+    if (!insertError) {
       setNewName("");
+      setNewRoom("");
       fetchSections();
     } else {
-      console.error("[Subjects] Insert error:", error.message);
+      setError(
+        insertError.message.includes("duplicate")
+          ? "A section with this name already exists."
+          : insertError.message,
+      );
     }
+  };
+
+  const removeSection = async (id: string) => {
+    await supabase.from("sections").delete().eq("id", id);
+    fetchSections();
   };
 
   return (
@@ -75,6 +84,8 @@ export default function SectionList() {
       <View style={styles.header}>
         <Text style={styles.title}>Sections</Text>
       </View>
+
+      {error && <Text style={styles.errorText}>{error}</Text>}
 
       <View style={styles.form}>
         <TextInput
@@ -91,14 +102,7 @@ export default function SectionList() {
           value={newRoom}
           onChangeText={setNewRoom}
         />
-        <TouchableOpacity
-          style={[
-            styles.addBtn,
-            (!newName.trim() || !newRoom.trim()) && styles.addBtnDisabled,
-          ]}
-          onPress={addSection}
-          disabled={!newName.trim() || !newRoom.trim()}
-        >
+        <TouchableOpacity style={styles.addBtn} onPress={addSection}>
           <Text style={styles.addBtnText}>Create Section</Text>
         </TouchableOpacity>
       </View>
@@ -112,7 +116,7 @@ export default function SectionList() {
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.row}
-            onPress={() => router.push(`/faculty/sections/${item.id}`)}
+            onPress={() => router.push(`/admin/sections/${item.id}`)}
           >
             <View>
               <Text style={styles.sectionName}>{item.name}</Text>
@@ -121,9 +125,7 @@ export default function SectionList() {
             <Text style={styles.chevron}>›</Text>
           </TouchableOpacity>
         )}
-        ListEmptyComponent={
-          !loading ? <Text style={styles.empty}>No sections yet</Text> : null
-        }
+        ListEmptyComponent={!loading ? <Text style={styles.empty}>No sections yet</Text> : null}
       />
     </SafeAreaView>
   );
@@ -133,35 +135,18 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#0D0D0D" },
   header: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 12 },
   title: { color: "#fff", fontSize: 26, fontWeight: "800" },
+  errorText: { color: "#F2816B", fontSize: 13, paddingHorizontal: 24, marginBottom: 8 },
   form: { paddingHorizontal: 24, gap: 8, marginBottom: 16 },
   input: {
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    color: "#fff",
-    fontSize: 14,
+    backgroundColor: "rgba(255,255,255,0.06)", borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
+    borderRadius: 14, paddingHorizontal: 16, paddingVertical: 12, color: "#fff", fontSize: 14,
   },
-  addBtn: {
-    backgroundColor: "#C8F04D",
-    borderRadius: 14,
-    paddingVertical: 12,
-    alignItems: "center",
-    marginTop: 4,
-  },
-  addBtnDisabled: { opacity: 0.35 },
+  addBtn: { backgroundColor: "#C8F04D", borderRadius: 14, paddingVertical: 12, alignItems: "center" },
   addBtnText: { color: "#0D0D0D", fontWeight: "800" },
   list: { paddingHorizontal: 24, paddingBottom: 40 },
   row: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 8,
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 14, padding: 16, marginBottom: 8,
   },
   sectionName: { color: "#fff", fontSize: 15, fontWeight: "600" },
   roomText: { color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 2 },
