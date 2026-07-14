@@ -1,5 +1,5 @@
-import { useAuthStore } from "../stores/authStore";
 import { supabase } from "./supabase";
+import { useAuthStore } from "../stores/authStore";
 
 type AuditAction =
   | "login"
@@ -35,7 +35,6 @@ export async function logAction(
       description: options?.description ?? null,
     });
   } catch (err) {
-    // Never let logging failures break the actual feature
     console.log("[Audit] Failed to log action:", action, err);
   }
 }
