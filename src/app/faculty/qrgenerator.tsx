@@ -49,6 +49,8 @@ async function syncSessionToSupabase(session: SessionPayload) {
     expires_at: session.expiresAt,
     role: session.role,
     late_threshold_minutes: session.lateThresholdMinutes,
+    session_type: session.sessionType,
+    event_name: session.eventName,
   });
   if (error) throw error;
   await markSynced("sessions", session.id);
@@ -78,6 +80,8 @@ async function logTokenRotation(sessionId: string, newToken: string) {
   }
 }
 
+type SessionType = "class" | "event";
+
 type SessionPayload = {
   id: string;
   subject: string;
@@ -91,6 +95,8 @@ type SessionPayload = {
   role: "faculty";
   signature: string;
   lateThresholdMinutes: number;
+  sessionType: SessionType;
+  eventName: string | null;
 };
 
 const SECRET = process.env.EXPO_PUBLIC_QR_SECRET;
@@ -172,6 +178,9 @@ function CountdownRing({ seconds, total }: { seconds: number; total: number }) {
 export default function QRGenerator() {
   const router = useRouter();
 
+  const [sessionType, setSessionType] = useState<SessionType>("class");
+  const [eventName, setEventName] = useState("");
+
   const [subjects, setSubjects] = useState<{ id: string; name: string }[]>([]);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(
     null,
@@ -182,6 +191,7 @@ export default function QRGenerator() {
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(
     null,
   );
+  const [eventRoom, setEventRoom] = useState("");
   const [duration, setDuration] = useState("60");
   const [isActive, setIsActive] = useState(false);
   const [sessionId] = useState(generateSessionId());
@@ -236,6 +246,25 @@ export default function QRGenerator() {
     ).toISOString();
     const signature = await signPayload(sessionId, t, expiresAt);
 
+    if (sessionType === "event") {
+      return {
+        id: sessionId,
+        subject: eventName,
+        subjectId: null,
+        room: eventRoom,
+        sectionId: null,
+        facultyId: user?.id ?? "unknown",
+        token: t,
+        createdAt,
+        expiresAt,
+        role: "faculty",
+        signature,
+        lateThresholdMinutes: lateThreshold,
+        sessionType: "event",
+        eventName,
+      };
+    }
+
     return {
       id: sessionId,
       subject: selectedSubjectName,
@@ -249,6 +278,8 @@ export default function QRGenerator() {
       role: "faculty",
       signature,
       lateThresholdMinutes: lateThreshold,
+      sessionType: "class",
+      eventName: null,
     };
   };
 
@@ -281,7 +312,11 @@ export default function QRGenerator() {
   };
 
   const startSession = async () => {
-    if (!selectedSubjectId || !selectedSectionId || !duration.trim()) return;
+    if (sessionType === "class") {
+      if (!selectedSubjectId || !selectedSectionId || !duration.trim()) return;
+    } else {
+      if (!eventName.trim() || !eventRoom.trim() || !duration.trim()) return;
+    }
 
     const mins = parseInt(duration);
     if (isNaN(mins) || mins <= 0) return;
@@ -305,7 +340,10 @@ export default function QRGenerator() {
       logAction("session_created", {
         tableName: "sessions",
         recordId: session.id,
-        description: `Started ${selectedSubjectName} in ${selectedSectionName}`,
+        description:
+          sessionType === "event"
+            ? `Started event: ${eventName}`
+            : `Started ${selectedSubjectName} in ${selectedSectionName}`,
       });
     } catch {
       setSyncStatus("offline");
@@ -381,7 +419,15 @@ export default function QRGenerator() {
           : "○ Not started";
 
   const canStart =
-    !!selectedSubjectId && !!selectedSectionId && !!duration.trim();
+    sessionType === "class"
+      ? !!selectedSubjectId && !!selectedSectionId && !!duration.trim()
+      : !!eventName.trim() && !!eventRoom.trim() && !!duration.trim();
+
+  const activeTitle = sessionType === "event" ? eventName : selectedSubjectName;
+  const activeMeta =
+    sessionType === "event"
+      ? eventRoom
+      : `${selectedSectionName} · ${selectedRoomName}`;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -404,96 +450,162 @@ export default function QRGenerator() {
 
         {!isActive ? (
           <View style={styles.form}>
-            <View style={styles.subjectHeaderRow}>
-              <Text style={styles.label}>Subject</Text>
+            <View style={styles.typeToggleRow}>
               <TouchableOpacity
-                onPress={() => router.push("/admin/subjects")}
+                style={[
+                  styles.typeToggle,
+                  sessionType === "class" && styles.typeToggleActive,
+                ]}
+                onPress={() => setSessionType("class")}
               >
-                <Text style={styles.manageLink}>Manage Subjects</Text>
+                <Text
+                  style={[
+                    styles.typeToggleText,
+                    sessionType === "class" && styles.typeToggleTextActive,
+                  ]}
+                >
+                  Class
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.typeToggle,
+                  sessionType === "event" && styles.typeToggleActive,
+                ]}
+                onPress={() => setSessionType("event")}
+              >
+                <Text
+                  style={[
+                    styles.typeToggleText,
+                    sessionType === "event" && styles.typeToggleTextActive,
+                  ]}
+                >
+                  Event
+                </Text>
               </TouchableOpacity>
             </View>
 
-            {subjects.length === 0 ? (
-              <TouchableOpacity
-                style={styles.noSubjectsCard}
-                onPress={() => router.push("/admin/subjects")}
-              >
-                <Text style={styles.noSubjectsText}>
-                  No subjects yet — tap to add one
-                </Text>
-              </TouchableOpacity>
-            ) : (
-              <View style={styles.subjectChipRow}>
-                {subjects.map((s) => (
+            {sessionType === "class" ? (
+              <>
+                <View style={styles.subjectHeaderRow}>
+                  <Text style={styles.label}>Subject</Text>
                   <TouchableOpacity
-                    key={s.id}
-                    style={[
-                      styles.subjectChip,
-                      selectedSubjectId === s.id && styles.subjectChipActive,
-                    ]}
-                    onPress={() => setSelectedSubjectId(s.id)}
+                    onPress={() => router.push("/admin/subjects")}
                   >
-                    <Text
-                      style={[
-                        styles.subjectChipText,
-                        selectedSubjectId === s.id &&
-                          styles.subjectChipTextActive,
-                      ]}
-                    >
-                      {s.name}
+                    <Text style={styles.manageLink}>Manage Subjects</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {subjects.length === 0 ? (
+                  <TouchableOpacity
+                    style={styles.noSubjectsCard}
+                    onPress={() => router.push("/admin/subjects")}
+                  >
+                    <Text style={styles.noSubjectsText}>
+                      No subjects yet — tap to add one
                     </Text>
                   </TouchableOpacity>
-                ))}
-              </View>
-            )}
+                ) : (
+                  <View style={styles.subjectChipRow}>
+                    {subjects.map((s) => (
+                      <TouchableOpacity
+                        key={s.id}
+                        style={[
+                          styles.subjectChip,
+                          selectedSubjectId === s.id &&
+                            styles.subjectChipActive,
+                        ]}
+                        onPress={() => setSelectedSubjectId(s.id)}
+                      >
+                        <Text
+                          style={[
+                            styles.subjectChipText,
+                            selectedSubjectId === s.id &&
+                              styles.subjectChipTextActive,
+                          ]}
+                        >
+                          {s.name}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
 
-            <View style={styles.subjectHeaderRow}>
-              <Text style={styles.label}>Section</Text>
-              <TouchableOpacity
-                onPress={() => router.push("/admin/sections")}
-              >
-                <Text style={styles.manageLink}>Manage Sections</Text>
-              </TouchableOpacity>
-            </View>
-
-            {sections.length === 0 ? (
-              <TouchableOpacity
-                style={styles.noSubjectsCard}
-                onPress={() => router.push("/admin/sections")}
-              >
-                <Text style={styles.noSubjectsText}>
-                  No sections yet — tap to add one
-                </Text>
-              </TouchableOpacity>
-            ) : (
-              <View style={styles.subjectChipRow}>
-                {sections.map((s) => (
+                <View style={styles.subjectHeaderRow}>
+                  <Text style={styles.label}>Section</Text>
                   <TouchableOpacity
-                    key={s.id}
-                    style={[
-                      styles.subjectChip,
-                      selectedSectionId === s.id && styles.subjectChipActive,
-                    ]}
-                    onPress={() => setSelectedSectionId(s.id)}
+                    onPress={() => router.push("/admin/sections")}
                   >
-                    <Text
-                      style={[
-                        styles.subjectChipText,
-                        selectedSectionId === s.id &&
-                          styles.subjectChipTextActive,
-                      ]}
-                    >
-                      {s.name}
+                    <Text style={styles.manageLink}>Manage Sections</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {sections.length === 0 ? (
+                  <TouchableOpacity
+                    style={styles.noSubjectsCard}
+                    onPress={() => router.push("/admin/sections")}
+                  >
+                    <Text style={styles.noSubjectsText}>
+                      No sections yet — tap to add one
                     </Text>
                   </TouchableOpacity>
-                ))}
-              </View>
-            )}
+                ) : (
+                  <View style={styles.subjectChipRow}>
+                    {sections.map((s) => (
+                      <TouchableOpacity
+                        key={s.id}
+                        style={[
+                          styles.subjectChip,
+                          selectedSectionId === s.id &&
+                            styles.subjectChipActive,
+                        ]}
+                        onPress={() => setSelectedSectionId(s.id)}
+                      >
+                        <Text
+                          style={[
+                            styles.subjectChipText,
+                            selectedSectionId === s.id &&
+                              styles.subjectChipTextActive,
+                          ]}
+                        >
+                          {s.name}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
 
-            {selectedSection && (
-              <Text style={styles.roomHint}>
-                Room: {selectedRoomName || "—"}
-              </Text>
+                {selectedSection && (
+                  <Text style={styles.roomHint}>
+                    Room: {selectedRoomName || "—"}
+                  </Text>
+                )}
+              </>
+            ) : (
+              <>
+                <Text style={styles.label}>Event Name</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. Foundation Day"
+                  placeholderTextColor="rgba(255,255,255,0.25)"
+                  value={eventName}
+                  onChangeText={setEventName}
+                />
+
+                <Text style={styles.label}>Location</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. Main Gymnasium"
+                  placeholderTextColor="rgba(255,255,255,0.25)"
+                  value={eventRoom}
+                  onChangeText={setEventRoom}
+                />
+
+                <Text style={styles.eventHint}>
+                  Anyone in the school can scan — no roster restriction for
+                  events.
+                </Text>
+              </>
             )}
 
             <Text style={styles.label}>Session Duration (minutes)</Text>
@@ -554,10 +666,8 @@ export default function QRGenerator() {
         ) : (
           <View style={styles.activeSession}>
             <View style={styles.sessionInfo}>
-              <Text style={styles.sessionSubject}>{selectedSubjectName}</Text>
-              <Text style={styles.sessionRoom}>
-                {selectedSectionName} · {selectedRoomName}
-              </Text>
+              <Text style={styles.sessionSubject}>{activeTitle}</Text>
+              <Text style={styles.sessionRoom}>{activeMeta}</Text>
               <View style={styles.sessionMeta}>
                 <Text style={styles.sessionMetaText}>Session ends in</Text>
                 <Text style={styles.sessionTimer}>
@@ -624,6 +734,26 @@ const styles = StyleSheet.create({
   },
   syncText: { fontSize: 12, fontWeight: "600" },
   form: { gap: 8 },
+  typeToggleRow: {
+    flexDirection: "row",
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderRadius: 14,
+    padding: 4,
+    marginBottom: 8,
+  },
+  typeToggle: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  typeToggleActive: { backgroundColor: "#C8F04D" },
+  typeToggleText: {
+    color: "rgba(255,255,255,0.5)",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  typeToggleTextActive: { color: "#0D0D0D" },
   label: {
     color: "rgba(255,255,255,0.5)",
     fontSize: 12,
@@ -668,6 +798,12 @@ const styles = StyleSheet.create({
   },
   subjectChipTextActive: { color: "#C8F04D" },
   roomHint: { color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 4 },
+  eventHint: {
+    color: "rgba(255,255,255,0.35)",
+    fontSize: 12,
+    marginTop: 4,
+    fontStyle: "italic",
+  },
   input: {
     backgroundColor: "rgba(255,255,255,0.06)",
     borderWidth: 1,
