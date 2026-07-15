@@ -1,4 +1,5 @@
 import { CameraView } from "expo-camera";
+import * as Crypto from "expo-crypto";
 import { Stack } from "expo-router";
 import { useState } from "react";
 import {
@@ -17,17 +18,24 @@ import { useAuthStore } from "../../../../stores/authStore";
 const { width } = Dimensions.get("window");
 const SCAN_SIZE = width * 0.7;
 
+const SECRET = process.env.EXPO_PUBLIC_QR_SECRET;
+
 type SessionPayload = {
   id: string;
   subject: string;
+  subjectId: string | null;
   room: string;
+  sectionId: string | null;
   facultyId: string;
   token: string;
   createdAt: string;
   expiresAt: string;
   role: "faculty";
-  secret: string;
+  signature: string;
   lateThresholdMinutes: number;
+  sessionType: "class" | "event";
+  eventName: string | null;
+  schoolId?: string;
 };
 
 function checkIfLate(session: SessionPayload): boolean {
@@ -35,6 +43,15 @@ function checkIfLate(session: SessionPayload): boolean {
   const sessionStart = new Date(session.createdAt).getTime();
   const thresholdMs = session.lateThresholdMinutes * 60 * 1000;
   return scannedAt - sessionStart > thresholdMs;
+}
+
+async function verifySignature(session: SessionPayload): Promise<boolean> {
+  const data = `${session.id}:${session.token}:${session.expiresAt}:${SECRET}`;
+  const expectedSignature = await Crypto.digestStringAsync(
+    Crypto.CryptoDigestAlgorithm.SHA256,
+    data,
+  );
+  return expectedSignature === session.signature;
 }
 
 export default function QRScanner() {
@@ -50,21 +67,42 @@ export default function QRScanner() {
     Vibration.vibrate(100);
 
     try {
-      // 1. Parse incoming QR payload string
-      const session: SessionPayload & { schoolId?: string } = JSON.parse(data);
+      const session: SessionPayload = JSON.parse(data);
+
+      // 1. Verify the QR hasn't been tampered with or forged
+      const isValid = await verifySignature(session);
+      if (!isValid) {
+        throw new Error("Invalid or tampered QR code");
+      }
+
+      // 2. Reject expired sessions outright
+      if (new Date(session.expiresAt).getTime() < Date.now()) {
+        throw new Error("This session has expired");
+      }
 
       const {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Not logged in");
 
-      // 2. Fetch the student's current school ID using Zustand state
+      // 3. Multi-tenant guard: block cross-school attendance
       const studentSchoolId = useAuthStore.getState().schoolId;
-
-      // 3. Multi-tenant Guard: block cross-school attendance hijacking
       if (session.schoolId && session.schoolId !== studentSchoolId) {
-        setError("Access Denied: This session belongs to a different school.");
-        return;
+        throw new Error("This session belongs to a different school");
+      }
+
+      // 4. Roster check — only for CLASS sessions, events have no roster
+      if (session.sessionType === "class" && session.sectionId) {
+        const { data: enrollment } = await supabase
+          .from("section_enrollments")
+          .select("id")
+          .eq("section_id", session.sectionId)
+          .eq("student_id", user.id)
+          .maybeSingle();
+
+        if (!enrollment) {
+          throw new Error("You are not enrolled in this section");
+        }
       }
 
       const isLate = checkIfLate(session);
@@ -73,7 +111,7 @@ export default function QRScanner() {
       const attendanceId = `att_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
       const scannedAt = new Date().toISOString();
 
-      // 4. Save locally first (offline-first architecture)
+      // 5. Save locally first (offline-first)
       await saveAttendance({
         id: attendanceId,
         session_id: session.id,
@@ -81,10 +119,9 @@ export default function QRScanner() {
         scanned_at: scannedAt,
         status: isLate ? "late" : "present",
         token_used: session.token,
-        school_id: studentSchoolId,
       });
 
-      // 5. Try syncing immediately to Supabase
+      // 6. Try syncing immediately, don't block confirmation
       try {
         const { error: insertError } = await supabase
           .from("attendance")
@@ -94,7 +131,7 @@ export default function QRScanner() {
             student_id: user.id,
             scanned_at: scannedAt,
             status: isLate ? "late" : "present",
-            school_id: studentSchoolId,
+            token_used: session.token,
           });
         if (insertError) throw insertError;
         await markSynced("attendance", attendanceId);
@@ -103,7 +140,11 @@ export default function QRScanner() {
       }
     } catch (err) {
       console.error("Attendance error:", err);
-      setError("Could not record attendance. Try again.");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Could not record attendance. Try again.",
+      );
     }
   };
 

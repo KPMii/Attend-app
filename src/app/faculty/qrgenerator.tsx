@@ -51,6 +51,7 @@ async function syncSessionToSupabase(session: SessionPayload) {
     late_threshold_minutes: session.lateThresholdMinutes,
     session_type: session.sessionType,
     event_name: session.eventName,
+    school_id: session.schoolId,
   });
   if (error) throw error;
   await markSynced("sessions", session.id);
@@ -88,6 +89,7 @@ type SessionPayload = {
   subjectId: string | null;
   room: string;
   sectionId: string | null;
+  schoolId: string | null;
   facultyId: string;
   token: string;
   createdAt: string;
@@ -240,6 +242,13 @@ export default function QRGenerator() {
       data: { user },
     } = await supabase.auth.getUser();
 
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("school_id")
+      .eq("id", user?.id)
+      .single();
+    const schoolId = profile?.school_id ?? null;
+
     const createdAt = new Date().toISOString();
     const expiresAt = new Date(
       Date.now() + parseInt(duration) * 60 * 1000,
@@ -262,6 +271,7 @@ export default function QRGenerator() {
         lateThresholdMinutes: lateThreshold,
         sessionType: "event",
         eventName,
+        schoolId,
       };
     }
 
@@ -280,6 +290,7 @@ export default function QRGenerator() {
       lateThresholdMinutes: lateThreshold,
       sessionType: "class",
       eventName: null,
+      schoolId,
     };
   };
 
