@@ -68,7 +68,7 @@ export default function AdminHome() {
       emoji: "🎓",
       title: "Students",
       sub: "View and edit student profiles",
-      route: "/faculty/students",
+      route: "/admin/students",
     },
     {
       emoji: "👨‍🏫",

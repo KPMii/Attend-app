@@ -12,6 +12,7 @@ import {
   View,
 } from "react-native";
 import { facultyLogin } from "../../../lib/auth";
+import { supabase } from "../../../lib/supabase";
 
 export default function FacultyLogin() {
   const router = useRouter();
@@ -30,7 +31,22 @@ export default function FacultyLogin() {
 
     try {
       await facultyLogin(email.trim(), password);
-      router.replace("/faculty");
+
+      // Check role and route accordingly
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user?.id)
+        .single();
+
+      if (profile?.role === "admin") {
+        router.replace("/admin");
+      } else {
+        router.replace("/faculty");
+      }
     } catch (err) {
       setError("Invalid email or password. Please try again.");
     } finally {

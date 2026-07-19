@@ -7,9 +7,14 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useAuthStore } from "../../../stores/authStore";
 
 export default function FacultyHome() {
   const router = useRouter();
+  const role = useAuthStore((s) => s.role);
+
+  // To check the role
+  console.log("DEBUG current role:", role);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -34,6 +39,19 @@ export default function FacultyHome() {
           <Text style={styles.cardTitle}>Manage Students</Text>
           <Text style={styles.cardSub}>Edit profiles, view attendance</Text>
         </TouchableOpacity>
+
+        {role === "admin" && (
+          <TouchableOpacity
+            style={styles.card}
+            onPress={() => router.push("/admin")}
+          >
+            <Text style={styles.cardEmoji}>⚙️</Text>
+            <Text style={styles.cardTitle}>Admin Panel</Text>
+            <Text style={styles.cardSub}>
+              Manage subjects, sections, students
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
     </SafeAreaView>
   );

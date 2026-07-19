@@ -1,42 +1,49 @@
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-  FlatList,
-  SafeAreaView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    FlatList,
+    SafeAreaView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { supabase } from "../../../../lib/supabase";
 
-type Faculty = { id: string; full_name: string };
+type Student = {
+  id: string;
+  full_name: string;
+  school_id_no: string | null;
+};
 
-export default function FacultyList() {
+export default function StudentList() {
   const router = useRouter();
-  const [faculty, setFaculty] = useState<Faculty[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
-  const fetchFaculty = async () => {
+  const fetchStudents = async () => {
     setLoading(true);
     const { data } = await supabase
       .from("profiles")
-      .select("id, full_name")
-      .eq("role", "faculty")
+      .select("id, full_name, school_id_no")
+      .eq("role", "student")
       .order("full_name");
-    if (data) setFaculty(data);
+
+    if (data) setStudents(data);
     setLoading(false);
   };
 
   useEffect(() => {
-    fetchFaculty();
+    fetchStudents();
   }, []);
 
-  const filtered = faculty.filter((f) =>
-    f.full_name?.toLowerCase().includes(search.toLowerCase()),
+  const filtered = students.filter(
+    (s) =>
+      s.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+      s.school_id_no?.toLowerCase().includes(search.toLowerCase()),
   );
 
   return (
@@ -44,17 +51,17 @@ export default function FacultyList() {
       <StatusBar barStyle="light-content" />
       <View style={styles.header}>
         <View>
-          <Text style={styles.title}>Faculty</Text>
-          <Text style={styles.subtitle}>{faculty.length} total</Text>
+          <Text style={styles.title}>Students</Text>
+          <Text style={styles.subtitle}>{students.length} total</Text>
         </View>
-        <TouchableOpacity onPress={() => router.push("/admin/faculty/add")}>
-          <Text style={styles.addLink}>+ Add Faculty</Text>
+        <TouchableOpacity onPress={() => router.push("/admin/students/add")}>
+          <Text style={styles.addLink}>+ Add Student</Text>
         </TouchableOpacity>
       </View>
 
       <TextInput
         style={styles.search}
-        placeholder="Search by name..."
+        placeholder="Search by name or School ID..."
         placeholderTextColor="rgba(255,255,255,0.3)"
         value={search}
         onChangeText={setSearch}
@@ -65,14 +72,21 @@ export default function FacultyList() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         refreshing={loading}
-        onRefresh={fetchFaculty}
+        onRefresh={fetchStudents}
         renderItem={({ item }) => (
-          <View style={styles.row}>
-            <Text style={styles.name}>{item.full_name || "(No name)"}</Text>
-          </View>
+          <TouchableOpacity
+            style={styles.row}
+            onPress={() => router.push(`/admin/students/${item.id}`)}
+          >
+            <View>
+              <Text style={styles.name}>{item.full_name || "(No name)"}</Text>
+              <Text style={styles.idText}>ID: {item.school_id_no || "—"}</Text>
+            </View>
+            <Text style={styles.chevron}>›</Text>
+          </TouchableOpacity>
         )}
         ListEmptyComponent={
-          !loading ? <Text style={styles.empty}>No faculty found</Text> : null
+          !loading ? <Text style={styles.empty}>No students found</Text> : null
         }
       />
     </SafeAreaView>
@@ -106,11 +120,20 @@ const styles = StyleSheet.create({
   },
   list: { paddingHorizontal: 24, paddingBottom: 40 },
   row: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     backgroundColor: "rgba(255,255,255,0.04)",
     borderRadius: 14,
     padding: 16,
     marginBottom: 8,
   },
   name: { color: "#fff", fontSize: 15, fontWeight: "600" },
-  empty: { color: "rgba(255,255,255,0.3)", textAlign: "center", marginTop: 40 },
+  idText: { color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 2 },
+  chevron: { color: "rgba(255,255,255,0.3)", fontSize: 22 },
+  empty: {
+    color: "rgba(255,255,255,0.3)",
+    textAlign: "center",
+    marginTop: 40,
+  },
 });
