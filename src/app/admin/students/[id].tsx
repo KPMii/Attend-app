@@ -32,6 +32,14 @@ export default function StudentDetail() {
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [loadingRecords, setLoadingRecords] = useState(true);
 
+  const [newPassword, setNewPassword] = useState("");
+  const [resetting, setResetting] = useState(false);
+  const [resetDone, setResetDone] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const [error, setError] = useState("");
+
   useEffect(() => {
     if (!id) return;
     loadProfile();
@@ -67,14 +75,15 @@ export default function StudentDetail() {
   const handleSave = async () => {
     setSaving(true);
     setSaved(false);
+    setError("");
 
-    const { error } = await supabase
+    const { error: saveError } = await supabase
       .from("profiles")
       .update({ full_name: fullName.trim(), school_id_no: schoolIdNo.trim() })
       .eq("id", id);
 
     setSaving(false);
-    if (!error) {
+    if (!saveError) {
       setSaved(true);
       logAction("profile_updated", {
         tableName: "profiles",
@@ -82,7 +91,62 @@ export default function StudentDetail() {
         description: `Updated student profile: ${fullName}`,
       });
       setTimeout(() => setSaved(false), 2000);
+    } else {
+      setError(saveError.message);
     }
+  };
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    setError("");
+
+    const { data, error: fnError } = await supabase.functions.invoke(
+      "delete-account",
+      { body: { targetUserId: id } },
+    );
+
+    setDeleting(false);
+
+    if (fnError || data?.error) {
+      setError(data?.error ?? "Failed to delete account");
+      return;
+    }
+
+    logAction("profile_updated", {
+      tableName: "profiles",
+      recordId: id as string,
+      description: `Deleted student account: ${fullName}`,
+    });
+    router.back();
+  };
+
+  const handleResetPassword = async () => {
+    setError("");
+    if (newPassword.length < 6) {
+      setError("Password must be at least 6 characters");
+      return;
+    }
+
+    setResetting(true);
+    const { data, error: fnError } = await supabase.functions.invoke(
+      "reset-password",
+      { body: { targetUserId: id, newPassword } },
+    );
+    setResetting(false);
+
+    if (fnError || data?.error) {
+      setError(data?.error ?? "Failed to reset password");
+      return;
+    }
+
+    setNewPassword("");
+    setResetDone(true);
+    logAction("profile_updated", {
+      tableName: "profiles",
+      recordId: id as string,
+      description: `Reset password for: ${fullName}`,
+    });
+    setTimeout(() => setResetDone(false), 2000);
   };
 
   const presentCount = records.filter((r) => r.status === "present").length;
@@ -93,6 +157,8 @@ export default function StudentDetail() {
       <Stack.Screen options={{ title: "Student Detail" }} />
       <StatusBar barStyle="light-content" />
       <ScrollView contentContainerStyle={styles.scroll}>
+        {error ? <Text style={styles.errorBanner}>{error}</Text> : null}
+
         <Text style={styles.sectionTitle}>Edit Profile</Text>
         <View style={styles.card}>
           <Text style={styles.label}>Full Name</Text>
@@ -121,6 +187,72 @@ export default function StudentDetail() {
               {saving ? "Saving..." : saved ? "✓ Saved" : "Save Changes"}
             </Text>
           </TouchableOpacity>
+        </View>
+
+        <Text style={styles.sectionTitle}>Reset Password</Text>
+        <View style={styles.card}>
+          <Text style={styles.label}>New Password</Text>
+          <TextInput
+            style={styles.input}
+            value={newPassword}
+            onChangeText={setNewPassword}
+            placeholder="At least 6 characters"
+            placeholderTextColor="rgba(255,255,255,0.25)"
+            secureTextEntry
+          />
+          <TouchableOpacity
+            style={[styles.resetBtn, resetting && styles.saveBtnDisabled]}
+            onPress={handleResetPassword}
+            disabled={resetting}
+          >
+            <Text style={styles.resetBtnText}>
+              {resetting
+                ? "Resetting..."
+                : resetDone
+                  ? "✓ Password Reset"
+                  : "Reset Password"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <Text style={styles.sectionTitle}>Danger Zone</Text>
+        <View style={styles.card}>
+          {!showDeleteConfirm ? (
+            <TouchableOpacity
+              style={styles.deleteBtn}
+              onPress={() => setShowDeleteConfirm(true)}
+            >
+              <Text style={styles.deleteBtnText}>Delete Account</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={{ gap: 8 }}>
+              <Text style={styles.confirmText}>
+                This permanently deletes {fullName}'s account. This cannot be
+                undone.
+              </Text>
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                <TouchableOpacity
+                  style={[
+                    styles.deleteBtn,
+                    { flex: 1 },
+                    deleting && styles.saveBtnDisabled,
+                  ]}
+                  onPress={handleDelete}
+                  disabled={deleting}
+                >
+                  <Text style={styles.deleteBtnText}>
+                    {deleting ? "Deleting..." : "Confirm Delete"}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.cancelBtn}
+                  onPress={() => setShowDeleteConfirm(false)}
+                >
+                  <Text style={styles.cancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
         </View>
 
         <Text style={styles.sectionTitle}>Attendance Summary</Text>
@@ -173,6 +305,15 @@ export default function StudentDetail() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#0D0D0D" },
   scroll: { padding: 24, gap: 12, paddingBottom: 48 },
+  errorBanner: {
+    backgroundColor: "rgba(242,129,107,0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(242,129,107,0.3)",
+    borderRadius: 12,
+    padding: 12,
+    color: "#F2816B",
+    fontSize: 13,
+  },
   sectionTitle: {
     color: "rgba(255,255,255,0.5)",
     fontSize: 12,
@@ -213,6 +354,38 @@ const styles = StyleSheet.create({
   },
   saveBtnDisabled: { opacity: 0.5 },
   saveBtnText: { color: "#0D0D0D", fontSize: 14, fontWeight: "800" },
+  resetBtn: {
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+    marginTop: 12,
+  },
+  resetBtnText: { color: "#fff", fontSize: 14, fontWeight: "700" },
+  deleteBtn: {
+    backgroundColor: "rgba(242,129,107,0.15)",
+    borderWidth: 1,
+    borderColor: "rgba(242,129,107,0.4)",
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  deleteBtnText: { color: "#F2816B", fontSize: 14, fontWeight: "700" },
+  cancelBtn: {
+    flex: 1,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  cancelBtnText: {
+    color: "rgba(255,255,255,0.6)",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  confirmText: { color: "rgba(255,255,255,0.6)", fontSize: 13, lineHeight: 18 },
   summaryRow: { flexDirection: "row", gap: 12 },
   summaryBox: {
     flex: 1,

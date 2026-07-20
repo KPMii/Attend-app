@@ -35,16 +35,16 @@ serve(async (req) => {
 
     const { schoolIdNo, fullName, password } = await req.json();
 
-    if (!schoolIdNo || !fullName || !password) {
-      return new Response(JSON.stringify({ error: "Missing required fields" }), { status: 400 });
-    }
+if (!schoolIdNo || !fullName || !password) {
+  return new Response(JSON.stringify({ error: "Missing required fields" }), { status: 400 });
+}
 
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
+const supabaseAdmin = createClient(
+  Deno.env.get("SUPABASE_URL")!,
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+);
 
-    const email = `${schoolIdNo.toLowerCase()}@students.attendapp.local`;
+const email = `${schoolIdNo.toLowerCase()}@students.attendapp.local`;
 
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
