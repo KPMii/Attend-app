@@ -206,7 +206,11 @@ export default function StudentDetail() {
             disabled={resetting}
           >
             <Text style={styles.resetBtnText}>
-              {resetting ? "Resetting..." : resetDone ? "✓ Password Reset" : "Reset Password"}
+              {resetting
+                ? "Resetting..."
+                : resetDone
+                  ? "✓ Password Reset"
+                  : "Reset Password"}
             </Text>
           </TouchableOpacity>
         </View>
@@ -223,11 +227,16 @@ export default function StudentDetail() {
           ) : (
             <View style={{ gap: 8 }}>
               <Text style={styles.confirmText}>
-                This permanently deletes {fullName}'s account. This cannot be undone.
+                This permanently deletes {fullName}'s account. This cannot be
+                undone.
               </Text>
               <View style={{ flexDirection: "row", gap: 8 }}>
                 <TouchableOpacity
-                  style={[styles.deleteBtn, { flex: 1 }, deleting && styles.saveBtnDisabled]}
+                  style={[
+                    styles.deleteBtn,
+                    { flex: 1 },
+                    deleting && styles.saveBtnDisabled,
+                  ]}
                   onPress={handleDelete}
                   disabled={deleting}
                 >
@@ -371,7 +380,11 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: "center",
   },
-  cancelBtnText: { color: "rgba(255,255,255,0.6)", fontSize: 14, fontWeight: "700" },
+  cancelBtnText: {
+    color: "rgba(255,255,255,0.6)",
+    fontSize: 14,
+    fontWeight: "700",
+  },
   confirmText: { color: "rgba(255,255,255,0.6)", fontSize: 13, lineHeight: 18 },
   summaryRow: { flexDirection: "row", gap: 12 },
   summaryBox: {

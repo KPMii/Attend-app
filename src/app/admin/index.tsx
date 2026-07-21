@@ -88,6 +88,12 @@ export default function AdminHome() {
       sub: "See who did what, and when",
       route: "/admin/audit",
     },
+    {
+      emoji: "📄",
+      title: "Reports",
+      sub: "Generate attendance PDF reports",
+      route: "/admin/reports",
+    },
   ];
 
   return (

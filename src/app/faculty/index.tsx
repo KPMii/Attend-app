@@ -40,6 +40,17 @@ export default function FacultyHome() {
           <Text style={styles.cardSub}>Edit profiles, view attendance</Text>
         </TouchableOpacity>
 
+        <TouchableOpacity
+          style={styles.card}
+          onPress={() => router.push("/faculty/reports")}
+        >
+          <Text style={styles.cardEmoji}>📄</Text>
+          <Text style={styles.cardTitle}>My Reports</Text>
+          <Text style={styles.cardSub}>
+            Generate attendance PDFs for your classes
+          </Text>
+        </TouchableOpacity>
+
         {role === "admin" && (
           <TouchableOpacity
             style={styles.card}
