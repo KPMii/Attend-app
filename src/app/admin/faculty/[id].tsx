@@ -1,36 +1,25 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { logAction } from "../../../../lib/audit";
 import { supabase } from "../../../../lib/supabase";
 
-type AttendanceRecord = {
-  id: string;
-  status: string;
-  scanned_at: string;
-  sessions: { subject: string; room: string; created_at: string } | null;
-};
-
-export default function StudentDetail() {
+export default function FacultyDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
 
   const [fullName, setFullName] = useState("");
-  const [schoolIdNo, setSchoolIdNo] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-
-  const [records, setRecords] = useState<AttendanceRecord[]>([]);
-  const [loadingRecords, setLoadingRecords] = useState(true);
 
   const [newPassword, setNewPassword] = useState("");
   const [resetting, setResetting] = useState(false);
@@ -43,33 +32,18 @@ export default function StudentDetail() {
   useEffect(() => {
     if (!id) return;
     loadProfile();
-    loadAttendance();
   }, [id]);
 
   const loadProfile = async () => {
     const { data } = await supabase
       .from("profiles")
-      .select("full_name, school_id_no")
+      .select("full_name")
       .eq("id", id)
       .single();
 
     if (data) {
       setFullName(data.full_name ?? "");
-      setSchoolIdNo(data.school_id_no ?? "");
     }
-  };
-
-  const loadAttendance = async () => {
-    setLoadingRecords(true);
-    const { data } = await supabase
-      .from("attendance")
-      .select("id, status, scanned_at, sessions(subject, room, created_at)")
-      .eq("student_id", id)
-      .order("scanned_at", { ascending: false })
-      .limit(50);
-
-    if (data) setRecords(data as any);
-    setLoadingRecords(false);
   };
 
   const handleSave = async () => {
@@ -79,7 +53,7 @@ export default function StudentDetail() {
 
     const { error: saveError } = await supabase
       .from("profiles")
-      .update({ full_name: fullName.trim(), school_id_no: schoolIdNo.trim() })
+      .update({ full_name: fullName.trim() })
       .eq("id", id);
 
     setSaving(false);
@@ -88,7 +62,7 @@ export default function StudentDetail() {
       logAction("profile_updated", {
         tableName: "profiles",
         recordId: id as string,
-        description: `Updated student profile: ${fullName}`,
+        description: `Updated faculty profile: ${fullName}`,
       });
       setTimeout(() => setSaved(false), 2000);
     } else {
@@ -115,7 +89,7 @@ export default function StudentDetail() {
     logAction("profile_updated", {
       tableName: "profiles",
       recordId: id as string,
-      description: `Deleted student account: ${fullName}`,
+      description: `Deleted faculty account: ${fullName}`,
     });
     router.back();
   };
@@ -149,12 +123,9 @@ export default function StudentDetail() {
     setTimeout(() => setResetDone(false), 2000);
   };
 
-  const presentCount = records.filter((r) => r.status === "present").length;
-  const lateCount = records.filter((r) => r.status === "late").length;
-
   return (
     <SafeAreaView style={styles.container}>
-      <Stack.Screen options={{ title: "Student Detail" }} />
+      <Stack.Screen options={{ title: "Faculty Detail" }} />
       <StatusBar barStyle="light-content" />
       <ScrollView contentContainerStyle={styles.scroll}>
         {error ? <Text style={styles.errorBanner}>{error}</Text> : null}
@@ -166,15 +137,6 @@ export default function StudentDetail() {
             style={styles.input}
             value={fullName}
             onChangeText={setFullName}
-            placeholderTextColor="rgba(255,255,255,0.25)"
-          />
-
-          <Text style={styles.label}>School ID No.</Text>
-          <TextInput
-            style={styles.input}
-            value={schoolIdNo}
-            onChangeText={setSchoolIdNo}
-            autoCapitalize="characters"
             placeholderTextColor="rgba(255,255,255,0.25)"
           />
 
@@ -213,7 +175,7 @@ export default function StudentDetail() {
 
         <Text style={styles.sectionTitle}>Danger Zone</Text>
         <View style={styles.card}>
-          {showDeleteConfirm ? (
+          {!showDeleteConfirm ? (
             <TouchableOpacity
               style={styles.deleteBtn}
               onPress={() => setShowDeleteConfirm(true)}
@@ -245,49 +207,6 @@ export default function StudentDetail() {
             </View>
           )}
         </View>
-
-        <Text style={styles.sectionTitle}>Attendance Summary</Text>
-        <View style={styles.summaryRow}>
-          <View style={styles.summaryBox}>
-            <Text style={styles.summaryNumber}>{presentCount}</Text>
-            <Text style={styles.summaryLabel}>Present</Text>
-          </View>
-          <View style={styles.summaryBox}>
-            <Text style={[styles.summaryNumber, { color: "#F2816B" }]}>
-              {lateCount}
-            </Text>
-            <Text style={styles.summaryLabel}>Late</Text>
-          </View>
-        </View>
-
-        <Text style={styles.sectionTitle}>Recent Attendance</Text>
-        {loadingRecords ? (
-          <Text style={styles.empty}>Loading...</Text>
-        ) : records.length === 0 ? (
-          <Text style={styles.empty}>No attendance records yet</Text>
-        ) : (
-          records.map((r) => (
-            <View key={r.id} style={styles.recordRow}>
-              <View>
-                <Text style={styles.recordSubject}>
-                  {r.sessions?.subject ?? "Unknown"}
-                </Text>
-                <Text style={styles.recordMeta}>
-                  {r.sessions?.room ?? ""} ·{" "}
-                  {new Date(r.scanned_at).toLocaleString()}
-                </Text>
-              </View>
-              <Text
-                style={[
-                  styles.statusBadge,
-                  { color: r.status === "late" ? "#F2816B" : "#C8F04D" },
-                ]}
-              >
-                {r.status === "late" ? "Late" : "Present"}
-              </Text>
-            </View>
-          ))
-        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -373,27 +292,4 @@ const styles = StyleSheet.create({
   },
   cancelBtnText: { color: "rgba(255,255,255,0.6)", fontSize: 14, fontWeight: "700" },
   confirmText: { color: "rgba(255,255,255,0.6)", fontSize: 13, lineHeight: 18 },
-  summaryRow: { flexDirection: "row", gap: 12 },
-  summaryBox: {
-    flex: 1,
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderRadius: 14,
-    padding: 16,
-    alignItems: "center",
-  },
-  summaryNumber: { color: "#C8F04D", fontSize: 24, fontWeight: "800" },
-  summaryLabel: { color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 4 },
-  recordRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 8,
-  },
-  recordSubject: { color: "#fff", fontSize: 14, fontWeight: "600" },
-  recordMeta: { color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 2 },
-  statusBadge: { fontSize: 13, fontWeight: "700" },
-  empty: { color: "rgba(255,255,255,0.3)", fontSize: 13, marginTop: 8 },
 });

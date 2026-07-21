@@ -67,9 +67,13 @@ export default function FacultyList() {
         refreshing={loading}
         onRefresh={fetchFaculty}
         renderItem={({ item }) => (
-          <View style={styles.row}>
+          <TouchableOpacity
+            style={styles.row}
+            onPress={() => router.push(`/admin/faculty/${item.id}`)}
+          >
             <Text style={styles.name}>{item.full_name || "(No name)"}</Text>
-          </View>
+            <Text style={styles.chevron}>›</Text>
+          </TouchableOpacity>
         )}
         ListEmptyComponent={
           !loading ? <Text style={styles.empty}>No faculty found</Text> : null
@@ -106,11 +110,15 @@ const styles = StyleSheet.create({
   },
   list: { paddingHorizontal: 24, paddingBottom: 40 },
   row: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     backgroundColor: "rgba(255,255,255,0.04)",
     borderRadius: 14,
     padding: 16,
     marginBottom: 8,
   },
   name: { color: "#fff", fontSize: 15, fontWeight: "600" },
+  chevron: { color: "rgba(255,255,255,0.3)", fontSize: 22 },
   empty: { color: "rgba(255,255,255,0.3)", textAlign: "center", marginTop: 40 },
 });
