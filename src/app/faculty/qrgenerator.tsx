@@ -426,7 +426,7 @@ export default function QRGenerator() {
       : syncStatus === "syncing"
         ? "○ Syncing..."
         : syncStatus === "offline"
-          ? "● Offline — queued"
+          ? "● Offline queued"
           : "○ Not started";
 
   const canStart =
@@ -500,11 +500,7 @@ export default function QRGenerator() {
               <>
                 <View style={styles.subjectHeaderRow}>
                   <Text style={styles.label}>Subject</Text>
-                  <TouchableOpacity
-                    onPress={() => router.push("/admin/subjects")}
-                  >
-                    <Text style={styles.manageLink}>Manage Subjects</Text>
-                  </TouchableOpacity>
+                  
                 </View>
 
                 {subjects.length === 0 ? (
@@ -513,7 +509,7 @@ export default function QRGenerator() {
                     onPress={() => router.push("/admin/subjects")}
                   >
                     <Text style={styles.noSubjectsText}>
-                      No subjects yet — tap to add one
+                      No subjects yet...
                     </Text>
                   </TouchableOpacity>
                 ) : (
@@ -544,22 +540,12 @@ export default function QRGenerator() {
 
                 <View style={styles.subjectHeaderRow}>
                   <Text style={styles.label}>Section</Text>
-                  <TouchableOpacity
-                    onPress={() => router.push("/admin/sections")}
-                  >
-                    <Text style={styles.manageLink}>Manage Sections</Text>
-                  </TouchableOpacity>
                 </View>
 
                 {sections.length === 0 ? (
-                  <TouchableOpacity
-                    style={styles.noSubjectsCard}
-                    onPress={() => router.push("/admin/sections")}
-                  >
-                    <Text style={styles.noSubjectsText}>
-                      No sections yet — tap to add one
+                  <Text style={styles.noSubjectsText}>
+                      No sections yet...
                     </Text>
-                  </TouchableOpacity>
                 ) : (
                   <View style={styles.subjectChipRow}>
                     {sections.map((s) => (
@@ -611,11 +597,6 @@ export default function QRGenerator() {
                   value={eventRoom}
                   onChangeText={setEventRoom}
                 />
-
-                <Text style={styles.eventHint}>
-                  Anyone in the school can scan — no roster restriction for
-                  events.
-                </Text>
               </>
             )}
 
