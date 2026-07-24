@@ -1,8 +1,15 @@
-import { useLocalSearchParams, Stack } from "expo-router";
+import { Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-  SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, View,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
+import { PAGE_SIZE, getRange } from "../../../../lib/pagination";
 import { supabase } from "../../../../lib/supabase";
 
 type AttendanceRecord = {
@@ -19,12 +26,18 @@ export default function StudentDetailReadOnly() {
   const [schoolIdNo, setSchoolIdNo] = useState("");
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
 
   useEffect(() => {
     if (!id) return;
     loadProfile();
-    loadAttendance();
   }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+    loadAttendance();
+  }, [id, page]);
 
   const loadProfile = async () => {
     const { data } = await supabase
@@ -40,13 +53,19 @@ export default function StudentDetailReadOnly() {
 
   const loadAttendance = async () => {
     setLoading(true);
-    const { data } = await supabase
+    const { from, to } = getRange(page);
+
+    const { data, count } = await supabase
       .from("attendance")
-      .select("id, status, scanned_at, sessions(subject, room, created_at)")
+      .select("id, status, scanned_at, sessions(subject, room, created_at)", {
+        count: "exact",
+      })
       .eq("student_id", id)
       .order("scanned_at", { ascending: false })
-      .limit(50);
+      .range(from, to);
+
     if (data) setRecords(data as any);
+    setTotalCount(count ?? 0);
     setLoading(false);
   };
 
@@ -62,7 +81,9 @@ export default function StudentDetailReadOnly() {
         <View style={styles.card}>
           <Text style={styles.name}>{fullName}</Text>
           <Text style={styles.idText}>School ID: {schoolIdNo}</Text>
-          <Text style={styles.hint}>Contact your admin to edit this record.</Text>
+          <Text style={styles.hint}>
+            Contact your admin to edit this record.
+          </Text>
         </View>
 
         <Text style={styles.sectionTitle}>Attendance Summary</Text>
@@ -72,7 +93,9 @@ export default function StudentDetailReadOnly() {
             <Text style={styles.summaryLabel}>Present</Text>
           </View>
           <View style={styles.summaryBox}>
-            <Text style={[styles.summaryNumber, { color: "#F2816B" }]}>{lateCount}</Text>
+            <Text style={[styles.summaryNumber, { color: "#F2816B" }]}>
+              {lateCount}
+            </Text>
             <Text style={styles.summaryLabel}>Late</Text>
           </View>
         </View>
@@ -86,17 +109,51 @@ export default function StudentDetailReadOnly() {
           records.map((r) => (
             <View key={r.id} style={styles.recordRow}>
               <View>
-                <Text style={styles.recordSubject}>{r.sessions?.subject ?? "Unknown"}</Text>
+                <Text style={styles.recordSubject}>
+                  {r.sessions?.subject ?? "Unknown"}
+                </Text>
                 <Text style={styles.recordMeta}>
-                  {r.sessions?.room ?? ""} · {new Date(r.scanned_at).toLocaleString()}
+                  {r.sessions?.room ?? ""} ·{" "}
+                  {new Date(r.scanned_at).toLocaleString()}
                 </Text>
               </View>
-              <Text style={[styles.statusBadge, { color: r.status === "late" ? "#F2816B" : "#C8F04D" }]}>
+              <Text
+                style={[
+                  styles.statusBadge,
+                  { color: r.status === "late" ? "#F2816B" : "#C8F04D" },
+                ]}
+              >
                 {r.status === "late" ? "Late" : "Present"}
               </Text>
             </View>
           ))
         )}
+
+        <View style={styles.pagerRow}>
+          <TouchableOpacity
+            style={[styles.pagerBtn, page === 0 && styles.pagerBtnDisabled]}
+            onPress={() => setPage((p) => Math.max(0, p - 1))}
+            disabled={page === 0}
+          >
+            <Text style={styles.pagerBtnText}>← Previous</Text>
+          </TouchableOpacity>
+          <Text style={styles.pagerLabel}>
+            {totalCount === 0
+              ? "0"
+              : `${page * PAGE_SIZE + 1}–${Math.min((page + 1) * PAGE_SIZE, totalCount)}`}{" "}
+            of {totalCount}
+          </Text>
+          <TouchableOpacity
+            style={[
+              styles.pagerBtn,
+              (page + 1) * PAGE_SIZE >= totalCount && styles.pagerBtnDisabled,
+            ]}
+            onPress={() => setPage((p) => p + 1)}
+            disabled={(page + 1) * PAGE_SIZE >= totalCount}
+          >
+            <Text style={styles.pagerBtnText}>Next →</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -106,23 +163,63 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#0D0D0D" },
   scroll: { padding: 24, gap: 12, paddingBottom: 48 },
   sectionTitle: {
-    color: "rgba(255,255,255,0.5)", fontSize: 12, fontWeight: "700",
-    letterSpacing: 0.5, textTransform: "uppercase", marginTop: 16,
+    color: "rgba(255,255,255,0.5)",
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+    marginTop: 16,
   },
-  card: { backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 16, padding: 16, gap: 4 },
+  card: {
+    backgroundColor: "rgba(255,255,255,0.04)",
+    borderRadius: 16,
+    padding: 16,
+    gap: 4,
+  },
   name: { color: "#fff", fontSize: 18, fontWeight: "700" },
   idText: { color: "rgba(255,255,255,0.5)", fontSize: 13 },
-  hint: { color: "rgba(255,255,255,0.3)", fontSize: 12, marginTop: 8, fontStyle: "italic" },
+  hint: {
+    color: "rgba(255,255,255,0.3)",
+    fontSize: 12,
+    marginTop: 8,
+    fontStyle: "italic",
+  },
   summaryRow: { flexDirection: "row", gap: 12 },
-  summaryBox: { flex: 1, backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 14, padding: 16, alignItems: "center" },
+  summaryBox: {
+    flex: 1,
+    backgroundColor: "rgba(255,255,255,0.04)",
+    borderRadius: 14,
+    padding: 16,
+    alignItems: "center",
+  },
   summaryNumber: { color: "#C8F04D", fontSize: 24, fontWeight: "800" },
   summaryLabel: { color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 4 },
   recordRow: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 12, padding: 14, marginBottom: 8,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.04)",
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 8,
   },
   recordSubject: { color: "#fff", fontSize: 14, fontWeight: "600" },
   recordMeta: { color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 2 },
   statusBadge: { fontSize: 13, fontWeight: "700" },
   empty: { color: "rgba(255,255,255,0.3)", fontSize: 13, marginTop: 8 },
+  pagerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 8,
+  },
+  pagerBtn: {
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  pagerBtnDisabled: { opacity: 0.3 },
+  pagerBtnText: { color: "#fff", fontSize: 13, fontWeight: "600" },
+  pagerLabel: { color: "rgba(255,255,255,0.4)", fontSize: 12 },
 });

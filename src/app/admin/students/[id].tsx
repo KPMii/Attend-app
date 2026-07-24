@@ -11,6 +11,7 @@ import {
   View,
 } from "react-native";
 import { logAction } from "../../../../lib/audit";
+import { PAGE_SIZE, getRange } from "../../../../lib/pagination";
 import { supabase } from "../../../../lib/supabase";
 
 type AttendanceRecord = {
@@ -31,6 +32,8 @@ export default function StudentDetail() {
 
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [loadingRecords, setLoadingRecords] = useState(true);
+  const [attendancePage, setAttendancePage] = useState(0);
+  const [attendanceTotal, setAttendanceTotal] = useState(0);
 
   const [newPassword, setNewPassword] = useState("");
   const [resetting, setResetting] = useState(false);
@@ -43,8 +46,12 @@ export default function StudentDetail() {
   useEffect(() => {
     if (!id) return;
     loadProfile();
-    loadAttendance();
   }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+    loadAttendance();
+  }, [id, attendancePage]);
 
   const loadProfile = async () => {
     const { data } = await supabase
@@ -61,14 +68,19 @@ export default function StudentDetail() {
 
   const loadAttendance = async () => {
     setLoadingRecords(true);
-    const { data } = await supabase
+    const { from, to } = getRange(attendancePage);
+
+    const { data, count } = await supabase
       .from("attendance")
-      .select("id, status, scanned_at, sessions(subject, room, created_at)")
+      .select("id, status, scanned_at, sessions(subject, room, created_at)", {
+        count: "exact",
+      })
       .eq("student_id", id)
       .order("scanned_at", { ascending: false })
-      .limit(50);
+      .range(from, to);
 
     if (data) setRecords(data as any);
+    setAttendanceTotal(count ?? 0);
     setLoadingRecords(false);
   };
 
@@ -217,7 +229,7 @@ export default function StudentDetail() {
 
         <Text style={styles.sectionTitle}>Danger Zone</Text>
         <View style={styles.card}>
-          {showDeleteConfirm ? (
+          {!showDeleteConfirm ? (
             <TouchableOpacity
               style={styles.deleteBtn}
               onPress={() => setShowDeleteConfirm(true)}
@@ -297,6 +309,36 @@ export default function StudentDetail() {
             </View>
           ))
         )}
+
+        <View style={styles.pagerRow}>
+          <TouchableOpacity
+            style={[
+              styles.pagerBtn,
+              attendancePage === 0 && styles.pagerBtnDisabled,
+            ]}
+            onPress={() => setAttendancePage((p) => Math.max(0, p - 1))}
+            disabled={attendancePage === 0}
+          >
+            <Text style={styles.pagerBtnText}>← Previous</Text>
+          </TouchableOpacity>
+          <Text style={styles.pagerLabel}>
+            {attendanceTotal === 0
+              ? "0"
+              : `${attendancePage * PAGE_SIZE + 1}–${Math.min((attendancePage + 1) * PAGE_SIZE, attendanceTotal)}`}{" "}
+            of {attendanceTotal}
+          </Text>
+          <TouchableOpacity
+            style={[
+              styles.pagerBtn,
+              (attendancePage + 1) * PAGE_SIZE >= attendanceTotal &&
+                styles.pagerBtnDisabled,
+            ]}
+            onPress={() => setAttendancePage((p) => p + 1)}
+            disabled={(attendancePage + 1) * PAGE_SIZE >= attendanceTotal}
+          >
+            <Text style={styles.pagerBtnText}>Next →</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -409,4 +451,19 @@ const styles = StyleSheet.create({
   recordMeta: { color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 2 },
   statusBadge: { fontSize: 13, fontWeight: "700" },
   empty: { color: "rgba(255,255,255,0.3)", fontSize: 13, marginTop: 8 },
+  pagerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 8,
+  },
+  pagerBtn: {
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  pagerBtnDisabled: { opacity: 0.3 },
+  pagerBtnText: { color: "#fff", fontSize: 13, fontWeight: "600" },
+  pagerLabel: { color: "rgba(255,255,255,0.4)", fontSize: 12 },
 });

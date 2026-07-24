@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import {
-    FlatList,
-    SafeAreaView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    View,
+  FlatList,
+  SafeAreaView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
+import { PAGE_SIZE, getRange } from "../../../../lib/pagination";
 import { supabase } from "../../../../lib/supabase";
 
 type LogRow = {
@@ -26,27 +28,34 @@ const actionColor: Record<string, string> = {
 export default function AuditLog() {
   const [logs, setLogs] = useState<LogRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
 
   const fetchLogs = async () => {
     setLoading(true);
-    const { data } = await supabase
+    const { from, to } = getRange(page);
+
+    const { data, count } = await supabase
       .from("audit_logs")
-      .select("id, action, description, created_at")
+      .select("id, action, description, created_at", { count: "exact" })
       .order("created_at", { ascending: false })
-      .limit(100);
+      .range(from, to);
+
     if (data) setLogs(data);
+    setTotalCount(count ?? 0);
     setLoading(false);
   };
 
   useEffect(() => {
     fetchLogs();
-  }, []);
+  }, [page]);
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
       <View style={styles.header}>
         <Text style={styles.title}>Audit Log</Text>
+        <Text style={styles.subtitle}>{totalCount} total entries</Text>
       </View>
 
       <FlatList
@@ -80,6 +89,32 @@ export default function AuditLog() {
           !loading ? <Text style={styles.empty}>No activity yet</Text> : null
         }
       />
+
+      <View style={styles.pagerRow}>
+        <TouchableOpacity
+          style={[styles.pagerBtn, page === 0 && styles.pagerBtnDisabled]}
+          onPress={() => setPage((p) => Math.max(0, p - 1))}
+          disabled={page === 0}
+        >
+          <Text style={styles.pagerBtnText}>← Previous</Text>
+        </TouchableOpacity>
+        <Text style={styles.pagerLabel}>
+          {totalCount === 0
+            ? "0"
+            : `${page * PAGE_SIZE + 1}–${Math.min((page + 1) * PAGE_SIZE, totalCount)}`}{" "}
+          of {totalCount}
+        </Text>
+        <TouchableOpacity
+          style={[
+            styles.pagerBtn,
+            (page + 1) * PAGE_SIZE >= totalCount && styles.pagerBtnDisabled,
+          ]}
+          onPress={() => setPage((p) => p + 1)}
+          disabled={(page + 1) * PAGE_SIZE >= totalCount}
+        >
+          <Text style={styles.pagerBtnText}>Next →</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
@@ -88,7 +123,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#0D0D0D" },
   header: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 12 },
   title: { color: "#fff", fontSize: 26, fontWeight: "800" },
-  list: { paddingHorizontal: 24, paddingBottom: 40 },
+  subtitle: { color: "rgba(255,255,255,0.4)", fontSize: 13, marginTop: 2 },
+  list: { paddingHorizontal: 24, paddingBottom: 8 },
   row: {
     flexDirection: "row",
     gap: 12,
@@ -108,4 +144,20 @@ const styles = StyleSheet.create({
   description: { color: "rgba(255,255,255,0.6)", fontSize: 13 },
   time: { color: "rgba(255,255,255,0.35)", fontSize: 11, marginTop: 2 },
   empty: { color: "rgba(255,255,255,0.3)", textAlign: "center", marginTop: 40 },
+  pagerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+  },
+  pagerBtn: {
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  pagerBtnDisabled: { opacity: 0.3 },
+  pagerBtnText: { color: "#fff", fontSize: 13, fontWeight: "600" },
+  pagerLabel: { color: "rgba(255,255,255,0.4)", fontSize: 12 },
 });

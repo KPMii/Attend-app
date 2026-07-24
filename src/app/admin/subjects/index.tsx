@@ -1,8 +1,15 @@
 import { useEffect, useState } from "react";
 import {
-  FlatList, SafeAreaView, StatusBar, StyleSheet, Text,
-  TextInput, TouchableOpacity, View,
+  FlatList,
+  SafeAreaView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
+import { PAGE_SIZE, getRange } from "../../../../lib/pagination";
 import { supabase } from "../../../../lib/supabase";
 
 type Subject = { id: string; name: string };
@@ -12,12 +19,19 @@ export default function AdminSubjects() {
   const [newName, setNewName] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
 
   const getMySchoolId = async (): Promise<string | null> => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return null;
     const { data: profile } = await supabase
-      .from("profiles").select("school_id").eq("id", user.id).single();
+      .from("profiles")
+      .select("school_id")
+      .eq("id", user.id)
+      .single();
     return profile?.school_id ?? null;
   };
 
@@ -29,19 +43,31 @@ export default function AdminSubjects() {
       setLoading(false);
       return;
     }
-    const { data } = await supabase
-      .from("subjects").select("id, name").eq("school_id", schoolId).order("name");
+    const { from, to } = getRange(page);
+
+    const { data, count } = await supabase
+      .from("subjects")
+      .select("id, name", { count: "exact" })
+      .eq("school_id", schoolId)
+      .order("name")
+      .range(from, to);
+
     if (data) setSubjects(data);
+    setTotalCount(count ?? 0);
     setLoading(false);
   };
 
-  useEffect(() => { fetchSubjects(); }, []);
+  useEffect(() => {
+    fetchSubjects();
+  }, [page]);
 
   const addSubject = async () => {
     if (!newName.trim()) return;
     setError(null);
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return;
 
     const schoolId = await getMySchoolId();
@@ -58,6 +84,7 @@ export default function AdminSubjects() {
 
     if (!insertError) {
       setNewName("");
+      setPage(0);
       fetchSubjects();
     } else {
       setError(
@@ -109,8 +136,36 @@ export default function AdminSubjects() {
             </TouchableOpacity>
           </View>
         )}
-        ListEmptyComponent={!loading ? <Text style={styles.empty}>No subjects yet</Text> : null}
+        ListEmptyComponent={
+          !loading ? <Text style={styles.empty}>No subjects yet</Text> : null
+        }
       />
+
+      <View style={styles.pagerRow}>
+        <TouchableOpacity
+          style={[styles.pagerBtn, page === 0 && styles.pagerBtnDisabled]}
+          onPress={() => setPage((p) => Math.max(0, p - 1))}
+          disabled={page === 0}
+        >
+          <Text style={styles.pagerBtnText}>← Previous</Text>
+        </TouchableOpacity>
+        <Text style={styles.pagerLabel}>
+          {totalCount === 0
+            ? "0"
+            : `${page * PAGE_SIZE + 1}–${Math.min((page + 1) * PAGE_SIZE, totalCount)}`}{" "}
+          of {totalCount}
+        </Text>
+        <TouchableOpacity
+          style={[
+            styles.pagerBtn,
+            (page + 1) * PAGE_SIZE >= totalCount && styles.pagerBtnDisabled,
+          ]}
+          onPress={() => setPage((p) => p + 1)}
+          disabled={(page + 1) * PAGE_SIZE >= totalCount}
+        >
+          <Text style={styles.pagerBtnText}>Next →</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
@@ -119,21 +174,63 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#0D0D0D" },
   header: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 12 },
   title: { color: "#fff", fontSize: 26, fontWeight: "800" },
-  errorText: { color: "#F2816B", fontSize: 13, paddingHorizontal: 24, marginBottom: 8 },
-  addRow: { flexDirection: "row", gap: 8, paddingHorizontal: 24, marginBottom: 16 },
-  input: {
-    flex: 1, backgroundColor: "rgba(255,255,255,0.06)", borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)", borderRadius: 14, paddingHorizontal: 16,
-    paddingVertical: 12, color: "#fff", fontSize: 14,
+  errorText: {
+    color: "#F2816B",
+    fontSize: 13,
+    paddingHorizontal: 24,
+    marginBottom: 8,
   },
-  addBtn: { backgroundColor: "#C8F04D", borderRadius: 14, paddingHorizontal: 20, justifyContent: "center" },
+  addRow: {
+    flexDirection: "row",
+    gap: 8,
+    paddingHorizontal: 24,
+    marginBottom: 16,
+  },
+  input: {
+    flex: 1,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    color: "#fff",
+    fontSize: 14,
+  },
+  addBtn: {
+    backgroundColor: "#C8F04D",
+    borderRadius: 14,
+    paddingHorizontal: 20,
+    justifyContent: "center",
+  },
   addBtnText: { color: "#0D0D0D", fontWeight: "800" },
-  list: { paddingHorizontal: 24, paddingBottom: 40 },
+  list: { paddingHorizontal: 24, paddingBottom: 8 },
   row: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 14, padding: 16, marginBottom: 8,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.04)",
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 8,
   },
   subjectName: { color: "#fff", fontSize: 15, fontWeight: "600" },
   removeText: { color: "#F2816B", fontSize: 13, fontWeight: "600" },
   empty: { color: "rgba(255,255,255,0.3)", textAlign: "center", marginTop: 40 },
+  pagerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+  },
+  pagerBtn: {
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  pagerBtnDisabled: { opacity: 0.3 },
+  pagerBtnText: { color: "#fff", fontSize: 13, fontWeight: "600" },
+  pagerLabel: { color: "rgba(255,255,255,0.4)", fontSize: 12 },
 });

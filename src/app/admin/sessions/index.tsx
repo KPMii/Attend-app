@@ -6,85 +6,95 @@ import {
   StatusBar,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { PAGE_SIZE, getRange } from "../../../../lib/pagination";
 import { supabase } from "../../../../lib/supabase";
 
-type Faculty = { id: string; full_name: string };
+type SessionRow = {
+  id: string;
+  subject: string;
+  room: string;
+  created_at: string;
+  session_type: string;
+  event_name: string | null;
+};
 
-export default function FacultyList() {
+export default function FacultySessionHistory() {
   const router = useRouter();
-  const [faculty, setFaculty] = useState<Faculty[]>([]);
-  const [search, setSearch] = useState("");
+  const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
 
-  const fetchFaculty = async () => {
+  const fetchSessions = async () => {
     setLoading(true);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+
     const { from, to } = getRange(page);
 
     const { data, count } = await supabase
-      .from("profiles")
-      .select("id, full_name", { count: "exact" })
-      .eq("role", "faculty")
-      .order("full_name")
+      .from("sessions")
+      .select("id, subject, room, created_at, session_type, event_name", {
+        count: "exact",
+      })
+      .order("created_at", { ascending: false })
       .range(from, to);
 
-    if (data) setFaculty(data);
+    if (data) setSessions(data);
     setTotalCount(count ?? 0);
     setLoading(false);
   };
 
   useEffect(() => {
-    fetchFaculty();
+    fetchSessions();
   }, [page]);
-
-  const filtered = faculty.filter((f) =>
-    f.full_name?.toLowerCase().includes(search.toLowerCase()),
-  );
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
       <View style={styles.header}>
-        <View>
-          <Text style={styles.title}>Faculty</Text>
-          <Text style={styles.subtitle}>{totalCount} total</Text>
-        </View>
-        <TouchableOpacity onPress={() => router.push("/admin/faculty/add")}>
-          <Text style={styles.addLink}>+ Add Faculty</Text>
-        </TouchableOpacity>
+        <Text style={styles.title}>Session History</Text>
+        <Text style={styles.subtitle}>{totalCount} total sessions</Text>
       </View>
 
-      <TextInput
-        style={styles.search}
-        placeholder="Search this page by name..."
-        placeholderTextColor="rgba(255,255,255,0.3)"
-        value={search}
-        onChangeText={setSearch}
-      />
-
       <FlatList
-        data={filtered}
+        data={sessions}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         refreshing={loading}
-        onRefresh={fetchFaculty}
+        onRefresh={fetchSessions}
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.row}
-            onPress={() => router.push(`/admin/faculty/${item.id}`)}
+            onPress={() => router.push(`/faculty/sessions/${item.id}`)}
           >
-            <Text style={styles.name}>{item.full_name || "(No name)"}</Text>
+            <View style={styles.rowLeft}>
+              <View style={styles.rowHeader}>
+                <Text style={styles.subject}>
+                  {item.session_type === "event"
+                    ? item.event_name
+                    : item.subject}
+                </Text>
+                {item.session_type === "event" && (
+                  <View style={styles.eventBadge}>
+                    <Text style={styles.eventBadgeText}>EVENT</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={styles.meta}>
+                {item.room} · {new Date(item.created_at).toLocaleString()}
+              </Text>
+            </View>
             <Text style={styles.chevron}>›</Text>
           </TouchableOpacity>
         )}
         ListEmptyComponent={
-          !loading ? <Text style={styles.empty}>No faculty found</Text> : null
+          !loading ? <Text style={styles.empty}>No sessions yet</Text> : null
         }
       />
 
@@ -119,29 +129,9 @@ export default function FacultyList() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#0D0D0D" },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 12,
-  },
+  header: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 12 },
   title: { color: "#fff", fontSize: 26, fontWeight: "800" },
   subtitle: { color: "rgba(255,255,255,0.4)", fontSize: 13, marginTop: 2 },
-  addLink: { color: "#C8F04D", fontSize: 13, fontWeight: "700", marginTop: 6 },
-  search: {
-    marginHorizontal: 24,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    color: "#fff",
-    fontSize: 14,
-    marginBottom: 12,
-  },
   list: { paddingHorizontal: 24, paddingBottom: 8 },
   row: {
     flexDirection: "row",
@@ -152,7 +142,17 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 8,
   },
-  name: { color: "#fff", fontSize: 15, fontWeight: "600" },
+  rowLeft: { flex: 1 },
+  rowHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
+  subject: { color: "#fff", fontSize: 15, fontWeight: "600" },
+  eventBadge: {
+    backgroundColor: "rgba(200,240,77,0.15)",
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  eventBadgeText: { color: "#C8F04D", fontSize: 9, fontWeight: "800" },
+  meta: { color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 2 },
   chevron: { color: "rgba(255,255,255,0.3)", fontSize: 22 },
   empty: { color: "rgba(255,255,255,0.3)", textAlign: "center", marginTop: 40 },
   pagerRow: {
