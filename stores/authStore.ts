@@ -23,16 +23,11 @@ export const useAuthStore = create<AuthState>((set) => ({
   loading: true,
 
   hydrate: async () => {
-    console.log("DEBUG: hydrate() called");
-    set({ loading: true });
-
     const {
       data: { session },
     } = await supabase.auth.getSession();
 
-    console.log("DEBUG: session exists?", !!session);
-
-    if (!session?.user) {
+    if (!session) {
       set({
         userId: null,
         role: null,
@@ -44,36 +39,20 @@ export const useAuthStore = create<AuthState>((set) => ({
       return;
     }
 
-    try {
-      const { data: profile, error } = await supabase
-        .from("profiles")
-        .select("role, full_name, school_id, school_id_no")
-        .eq("id", session.user.id)
-        .single();
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role, full_name, school_id, school_id_no")
+      .eq("id", session.user.id)
+      .single();
 
-      console.log("DEBUG: profile query result:", profile, "error:", error);
-
-      if (error) throw error;
-
-      set({
-        userId: session.user.id,
-        role: profile?.role ?? null,
-        fullName: profile?.full_name ?? null,
-        schoolId: profile?.school_id ?? null,
-        schoolIdNo: profile?.school_id_no ?? null,
-        loading: false,
-      });
-    } catch (err) {
-      console.error("Error hydrating auth store:", err);
-      set({
-        userId: null,
-        role: null,
-        fullName: null,
-        schoolId: null,
-        schoolIdNo: null,
-        loading: false,
-      });
-    }
+    set({
+      userId: session.user.id,
+      role: profile?.role ?? null,
+      fullName: profile?.full_name ?? null,
+      schoolId: profile?.school_id ?? null,
+      schoolIdNo: profile?.school_id_no ?? null,
+      loading: false,
+    });
   },
 
   logout: async () => {
@@ -84,7 +63,6 @@ export const useAuthStore = create<AuthState>((set) => ({
       fullName: null,
       schoolId: null,
       schoolIdNo: null,
-      loading: false,
     });
   },
 }));

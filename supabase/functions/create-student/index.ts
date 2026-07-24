@@ -44,8 +44,8 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    const email = `${schoolIdNo.toLowerCase()}@students.attendapp.local`;
-
+    const email = `${schoolIdNo.toLowerCase()}.${school?.code}@students.attendapp.local`;
+    
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,

@@ -1,13 +1,15 @@
 import { Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    View,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
+import { generateSessionPdf } from "../../../../lib/reportGenerator";
 import { supabase } from "../../../../lib/supabase";
 
 type SessionRow = { id: string; created_at: string; room: string };
@@ -18,6 +20,7 @@ export default function AdminSubjectDetail() {
   const [subjectName, setSubjectName] = useState("");
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [generatingId, setGeneratingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -45,6 +48,18 @@ export default function AdminSubjectDetail() {
     setLoading(false);
   };
 
+  const handleGeneratePdf = async (sessionId: string) => {
+    if (generatingId) return;
+    setGeneratingId(sessionId);
+    try {
+      await generateSessionPdf(sessionId);
+    } catch (err) {
+      console.error("PDF generation error:", err);
+    } finally {
+      setGeneratingId(null);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <Stack.Screen options={{ title: subjectName || "Subject" }} />
@@ -60,14 +75,24 @@ export default function AdminSubjectDetail() {
         ) : (
           sessions.map((s) => (
             <View key={s.id} style={styles.sessionRow}>
-              <Text style={styles.sessionDate}>
-                {new Date(s.created_at).toLocaleDateString(undefined, {
-                  weekday: "short",
-                  month: "short",
-                  day: "numeric",
-                })}
-              </Text>
-              <Text style={styles.sessionRoom}>{s.room}</Text>
+              <View>
+                <Text style={styles.sessionDate}>
+                  {new Date(s.created_at).toLocaleDateString(undefined, {
+                    weekday: "short",
+                    month: "short",
+                    day: "numeric",
+                  })}
+                </Text>
+                <Text style={styles.sessionRoom}>{s.room}</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => handleGeneratePdf(s.id)}
+                disabled={generatingId === s.id}
+              >
+                <Text style={styles.pdfLink}>
+                  {generatingId === s.id ? "Generating..." : "📄 PDF"}
+                </Text>
+              </TouchableOpacity>
             </View>
           ))
         )}
@@ -92,6 +117,7 @@ const styles = StyleSheet.create({
   sessionRow: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "center",
     backgroundColor: "rgba(255,255,255,0.04)",
     borderRadius: 12,
     padding: 14,
@@ -99,5 +125,6 @@ const styles = StyleSheet.create({
   },
   sessionDate: { color: "#fff", fontSize: 14, fontWeight: "600" },
   sessionRoom: { color: "rgba(255,255,255,0.4)", fontSize: 13 },
+  pdfLink: { color: "#C8F04D", fontSize: 12, fontWeight: "700" },
   empty: { color: "rgba(255,255,255,0.3)", fontSize: 13, marginTop: 4 },
 });
