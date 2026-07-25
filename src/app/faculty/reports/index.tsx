@@ -11,8 +11,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { logAction } from "../../../../lib/audit";
-import { supabase } from "../../../../lib/supabase";
+import { logAction } from "../../../lib/audit";
+import { supabase } from "../../../lib/supabase";
 
 type Section = { id: string; name: string };
 type SessionRow = { id: string; subject: string; created_at: string };

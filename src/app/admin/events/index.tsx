@@ -1,11 +1,23 @@
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-  FlatList, SafeAreaView, StatusBar, StyleSheet, Text, TouchableOpacity, View,
+  FlatList,
+  SafeAreaView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { supabase } from "../../../../lib/supabase";
+import { supabase } from "../../../lib/supabase";
 
-type EventRow = { id: string; event_name: string; room: string; created_at: string; expires_at: string };
+type EventRow = {
+  id: string;
+  event_name: string;
+  room: string;
+  created_at: string;
+  expires_at: string;
+};
 
 export default function EventsList() {
   const router = useRouter();
@@ -23,14 +35,18 @@ export default function EventsList() {
     setLoading(false);
   };
 
-  useEffect(() => { fetchEvents(); }, []);
+  useEffect(() => {
+    fetchEvents();
+  }, []);
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
       <View style={styles.header}>
         <Text style={styles.title}>Events</Text>
-        <TouchableOpacity onPress={() => router.push("/faculty/qrgenerator?type=event")}>
+        <TouchableOpacity
+          onPress={() => router.push("/faculty/qrgenerator?type=event")}
+        >
           <Text style={styles.newLink}>+ New Event</Text>
         </TouchableOpacity>
       </View>
@@ -51,7 +67,9 @@ export default function EventsList() {
             </View>
           </View>
         )}
-        ListEmptyComponent={!loading ? <Text style={styles.empty}>No events yet</Text> : null}
+        ListEmptyComponent={
+          !loading ? <Text style={styles.empty}>No events yet</Text> : null
+        }
       />
     </SafeAreaView>
   );
@@ -60,14 +78,21 @@ export default function EventsList() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#0D0D0D" },
   header: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    paddingHorizontal: 24, paddingTop: 24, paddingBottom: 12,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 12,
   },
   title: { color: "#fff", fontSize: 26, fontWeight: "800" },
   newLink: { color: "#C8F04D", fontSize: 13, fontWeight: "700" },
   list: { paddingHorizontal: 24, paddingBottom: 40 },
   row: {
-    backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 14, padding: 16, marginBottom: 8,
+    backgroundColor: "rgba(255,255,255,0.04)",
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 8,
   },
   eventName: { color: "#fff", fontSize: 15, fontWeight: "600" },
   eventMeta: { color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 2 },

@@ -13,10 +13,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import QRCode from "react-native-qrcode-svg";
-import { logAction } from "../../../lib/audit";
-import { getDB, markSynced, saveSession } from "../../../lib/db";
-import { supabase } from "../../../lib/supabase";
+import { LazyQRCode } from "../../components/lazyQRCode";
+import { logAction } from "../../lib/audit";
+import { getDB, markSynced, saveSession } from "../../lib/db";
+import { supabase } from "../../lib/supabase";
 
 const { width } = Dimensions.get("window");
 const QR_INTERVAL = 15;
@@ -500,7 +500,6 @@ export default function QRGenerator() {
               <>
                 <View style={styles.subjectHeaderRow}>
                   <Text style={styles.label}>Subject</Text>
-                  
                 </View>
 
                 {subjects.length === 0 ? (
@@ -543,9 +542,7 @@ export default function QRGenerator() {
                 </View>
 
                 {sections.length === 0 ? (
-                  <Text style={styles.noSubjectsText}>
-                      No sections yet...
-                    </Text>
+                  <Text style={styles.noSubjectsText}>No sections yet...</Text>
                 ) : (
                   <View style={styles.subjectChipRow}>
                     {sections.map((s) => (
@@ -671,7 +668,7 @@ export default function QRGenerator() {
             <Animated.View style={[styles.qrCard, { opacity: qrFadeAnim }]}>
               <View style={styles.qrInner}>
                 {qrPayload ? (
-                  <QRCode
+                  <LazyQRCode
                     value={qrPayload}
                     size={width * 0.58}
                     color="#0D0D0D"

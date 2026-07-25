@@ -10,9 +10,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { logAction } from "../../../../lib/audit";
-import { PAGE_SIZE, getRange } from "../../../../lib/pagination";
-import { supabase } from "../../../../lib/supabase";
+import { logAction } from "../../../lib/audit";
+import { PAGE_SIZE, getRange } from "../../../lib/pagination";
+import { supabase } from "../../../lib/supabase";
 
 type AttendanceRecord = {
   id: string;

@@ -11,7 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { studentLogin } from "../../../lib/auth";
+import { studentLogin } from "../../lib/auth";
 
 export default function StudentLogin() {
   const router = useRouter();

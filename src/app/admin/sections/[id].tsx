@@ -10,7 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { supabase } from "../../../../lib/supabase";
+import { supabase } from "../../../lib/supabase";
 
 type Student = { id: string; full_name: string; school_id_no: string | null };
 
@@ -44,19 +44,21 @@ export default function AdminSectionDetail() {
   };
 
   const loadRoster = async () => {
-  setLoading(true);
-  const { data } = await supabase.rpc("get_section_roster", { p_section_id: id });
-  if (data) {
-    setRoster(
-      data.map((r: any) => ({
-        id: r.student_id,
-        full_name: r.full_name,
-        school_id_no: r.school_id_no,
-      })),
-    );
-  }
-  setLoading(false);
-};
+    setLoading(true);
+    const { data } = await supabase.rpc("get_section_roster", {
+      p_section_id: id,
+    });
+    if (data) {
+      setRoster(
+        data.map((r: any) => ({
+          id: r.student_id,
+          full_name: r.full_name,
+          school_id_no: r.school_id_no,
+        })),
+      );
+    }
+    setLoading(false);
+  };
 
   const searchStudent = async () => {
     setSearchError(null);

@@ -1,14 +1,14 @@
 import { Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    View,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
-import { supabase } from "../../../../lib/supabase";
+import { supabase } from "../../../lib/supabase";
 
 type Row = {
   id: string;

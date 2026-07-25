@@ -1,4 +1,4 @@
-import { CameraView } from "expo-camera";
+import { LazyCameraView } from "../../../components/lazyCamera";
 import * as Crypto from "expo-crypto";
 import { Stack } from "expo-router";
 import { useState } from "react";
@@ -11,9 +11,10 @@ import {
   Vibration,
   View,
 } from "react-native";
-import { markSynced, saveAttendance } from "../../../../lib/db";
-import { supabase } from "../../../../lib/supabase";
 import { useAuthStore } from "../../../../stores/authStore";
+import { markSynced, saveAttendance } from "../../../lib/db";
+
+import { supabase } from "../../../lib/supabase";
 
 const { width } = Dimensions.get("window");
 const SCAN_SIZE = width * 0.7;
@@ -91,7 +92,7 @@ export default function QRScanner() {
         throw new Error("This session belongs to a different school");
       }
 
-      // 4. Roster check — only for CLASS sessions, events have no roster
+      // 4. Roster check Ã¢â‚¬â€ only for CLASS sessions, events have no roster
       if (session.sessionType === "class" && session.sectionId) {
         const { data: enrollment } = await supabase
           .from("section_enrollments")
@@ -160,7 +161,7 @@ export default function QRScanner() {
       <Stack.Screen options={{ headerShown: false }} />
       <StatusBar barStyle="light-content" />
 
-      <CameraView
+      <LazyCameraView
         style={StyleSheet.absoluteFill}
         facing="back"
         onBarcodeScanned={scanned ? undefined : handleScanned}
@@ -194,7 +195,7 @@ export default function QRScanner() {
             <View style={styles.resultCard}>
               {error ? (
                 <>
-                  <Text style={styles.resultLabel}>⚠️ Error</Text>
+                  <Text style={styles.resultLabel}>Ã¢Å¡Â Ã¯Â¸Â Error</Text>
                   <Text style={styles.resultText}>{error}</Text>
                 </>
               ) : (
@@ -206,8 +207,8 @@ export default function QRScanner() {
                     ]}
                   >
                     {status === "late"
-                      ? "🕓 Marked Late"
-                      : "✅ Attendance Recorded"}
+                      ? "Ã°Å¸â€¢â€œ Marked Late"
+                      : "Ã¢Å“â€¦ Attendance Recorded"}
                   </Text>
                   <Text style={styles.resultText}>
                     {status === "late"

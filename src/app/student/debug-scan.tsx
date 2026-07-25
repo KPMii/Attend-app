@@ -2,17 +2,17 @@ import * as Crypto from "expo-crypto";
 import { Stack } from "expo-router";
 import { useState } from "react";
 import {
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { markSynced, saveAttendance } from "../../../lib/db";
-import { supabase } from "../../../lib/supabase";
+import { markSynced, saveAttendance } from "../../lib/db";
+import { supabase } from "../../lib/supabase";
 
 const SECRET = process.env.EXPO_PUBLIC_QR_SECRET;
 

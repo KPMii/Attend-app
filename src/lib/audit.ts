@@ -1,5 +1,5 @@
+import { useAuthStore } from "../../stores/authStore";
 import { supabase } from "./supabase";
-import { useAuthStore } from "../stores/authStore";
 
 type AuditAction =
   | "login"

@@ -1,16 +1,16 @@
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-    FlatList,
-    SafeAreaView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  FlatList,
+  SafeAreaView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { PAGE_SIZE, getRange } from "../../../../lib/pagination";
-import { supabase } from "../../../../lib/supabase";
+import { PAGE_SIZE, getRange } from "../../../lib/pagination";
+import { supabase } from "../../../lib/supabase";
 
 type SessionRow = {
   id: string;

@@ -1,16 +1,16 @@
 import { useState } from "react";
 import {
-    KeyboardAvoidingView,
-    Platform,
-    SafeAreaView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  KeyboardAvoidingView,
+  Platform,
+  SafeAreaView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { supabase } from "../../../../lib/supabase";
+import { supabase } from "../../../lib/supabase";
 
 export default function AddFaculty() {
   const [email, setEmail] = useState("");

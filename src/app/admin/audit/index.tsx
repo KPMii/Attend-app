@@ -8,8 +8,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { PAGE_SIZE, getRange } from "../../../../lib/pagination";
-import { supabase } from "../../../../lib/supabase";
+import { PAGE_SIZE, getRange } from "../../../lib/pagination";
+import { supabase } from "../../../lib/supabase";
 
 type LogRow = {
   id: string;

@@ -11,8 +11,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { facultyLogin } from "../../../lib/auth";
-import { supabase } from "../../../lib/supabase";
+import { facultyLogin } from "../../lib/auth";
+import { supabase } from "../../lib/supabase";
 
 export default function FacultyLogin() {
   const router = useRouter();

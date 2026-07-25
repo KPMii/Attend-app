@@ -1,5 +1,5 @@
+import { supabase } from "@/lib/supabase";
 import { create } from "zustand";
-import { supabase } from "../lib/supabase";
 
 type Role = "student" | "faculty" | "admin" | null;
 

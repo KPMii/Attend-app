@@ -2,16 +2,16 @@ import "@/app/faculty/students/[id]";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-    FlatList,
-    SafeAreaView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  FlatList,
+  SafeAreaView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { supabase } from "../../../../lib/supabase";
+import { supabase } from "../../../lib/supabase";
 
 type Student = {
   id: string;

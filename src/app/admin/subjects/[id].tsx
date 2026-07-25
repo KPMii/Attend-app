@@ -9,8 +9,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { generateSessionPdf } from "../../../../lib/reportGenerator";
-import { supabase } from "../../../../lib/supabase";
+import { generateSessionPdf } from "../../../lib/reportGenerator";
+import { supabase } from "../../../lib/supabase";
 
 type SessionRow = { id: string; created_at: string; room: string };
 
