@@ -34,7 +34,7 @@ export default function AdminHome() {
       supabase
         .from("profiles")
         .select("*", { count: "exact", head: true })
-        .eq("role", "student"),
+        .in("role", ["student", "student_council_officer"]),
       supabase
         .from("profiles")
         .select("*", { count: "exact", head: true })

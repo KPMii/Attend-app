@@ -1,4 +1,4 @@
-import { useRouter } from "expo-router";
+﻿import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
   KeyboardAvoidingView,
@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { facultyLogin } from "../../lib/auth";
 import { supabase } from "../../lib/supabase";
+import type { Role } from "../../lib/permissions";
 
 export default function FacultyLogin() {
   const router = useRouter();
@@ -32,7 +33,6 @@ export default function FacultyLogin() {
     try {
       await facultyLogin(email.trim(), password);
 
-      // Check role and route accordingly
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -42,8 +42,12 @@ export default function FacultyLogin() {
         .eq("id", user?.id)
         .single();
 
-      if (profile?.role === "admin") {
+      const role = profile?.role as Role;
+
+      if (role === "admin") {
         router.replace("/admin");
+      } else if (role === "student_council_officer") {
+        router.replace("/faculty"); // share faculty UI
       } else {
         router.replace("/faculty");
       }

@@ -30,7 +30,7 @@ export default function StudentManager() {
     const { data, error } = await supabase
       .from("profiles")
       .select("id, full_name, school_id_no")
-      .eq("role", "student")
+      .in("role", ["student", "student_council_officer"])
       .order("full_name");
 
     if (!error && data) setStudents(data);

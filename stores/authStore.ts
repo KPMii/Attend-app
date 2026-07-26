@@ -1,26 +1,32 @@
-import { supabase } from "@/lib/supabase";
+﻿import { supabase } from "@/lib/supabase";
 import { create } from "zustand";
-
-type Role = "student" | "faculty" | "admin" | null;
+import { ROLE_PERMISSIONS, type Permission, type Role } from "../src/lib/permissions";
 
 type AuthState = {
   userId: string | null;
-  role: Role;
+  role: Role | null;
   fullName: string | null;
   schoolId: string | null;
   schoolIdNo: string | null;
   loading: boolean;
+  hasPermission: (code: Permission) => boolean;
   hydrate: () => Promise<void>;
   logout: () => Promise<void>;
 };
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   userId: null,
   role: null,
   fullName: null,
   schoolId: null,
   schoolIdNo: null,
   loading: true,
+
+  hasPermission: (code: Permission) => {
+    const role = get().role;
+    if (!role) return false;
+    return ROLE_PERMISSIONS[role]?.includes(code) ?? false;
+  },
 
   hydrate: async () => {
     const {
@@ -47,7 +53,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     set({
       userId: session.user.id,
-      role: profile?.role ?? null,
+      role: (profile?.role as Role) ?? null,
       fullName: profile?.full_name ?? null,
       schoolId: profile?.school_id ?? null,
       schoolIdNo: profile?.school_id_no ?? null,

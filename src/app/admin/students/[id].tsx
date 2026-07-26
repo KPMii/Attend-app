@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useAuthStore } from "../../../../stores/authStore";
 import { logAction } from "../../../lib/audit";
 import { PAGE_SIZE, getRange } from "../../../lib/pagination";
 import { supabase } from "../../../lib/supabase";
@@ -24,9 +25,11 @@ type AttendanceRecord = {
 export default function StudentDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const hasPermission = useAuthStore((s) => s.hasPermission);
 
   const [fullName, setFullName] = useState("");
   const [schoolIdNo, setSchoolIdNo] = useState("");
+  const [currentRole, setCurrentRole] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -56,14 +59,35 @@ export default function StudentDetail() {
   const loadProfile = async () => {
     const { data } = await supabase
       .from("profiles")
-      .select("full_name, school_id_no")
+      .select("full_name, school_id_no, role")
       .eq("id", id)
       .single();
 
     if (data) {
       setFullName(data.full_name ?? "");
       setSchoolIdNo(data.school_id_no ?? "");
+      setCurrentRole(data.role ?? "");
     }
+  };
+
+  const assignRole = async (newRole: string) => {
+    setError("");
+    const { error: updateError } = await supabase
+      .from("profiles")
+      .update({ role: newRole })
+      .eq("id", id);
+
+    if (updateError) {
+      setError(updateError.message);
+      return;
+    }
+
+    setCurrentRole(newRole);
+    logAction("profile_updated", {
+      tableName: "profiles",
+      recordId: id as string,
+      description: `Changed ${fullName} role to ${newRole}`,
+    });
   };
 
   const loadAttendance = async () => {
@@ -200,6 +224,49 @@ export default function StudentDetail() {
             </Text>
           </TouchableOpacity>
         </View>
+
+        {currentRole === "student" && hasPermission("users:assign_role") && (
+          <>
+            <Text style={styles.sectionTitle}>Role Assignment</Text>
+            <View style={styles.card}>
+              <Text style={styles.roleDescription}>
+                Promote this student to Student Council Officer. They will gain
+                access to scan QR codes at events, view school-wide attendance,
+                and create event sessions.
+              </Text>
+              <TouchableOpacity
+                style={styles.promoteBtn}
+                onPress={() => assignRole("student_council_officer")}
+              >
+                <Text style={styles.promoteBtnText}>
+                  Promote to Student Council Officer
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
+
+        {currentRole === "student_council_officer" &&
+          hasPermission("users:assign_role") && (
+            <>
+              <Text style={styles.sectionTitle}>Role Assignment</Text>
+              <View style={[styles.card, styles.councilCard]}>
+                <Text style={styles.councilBadge}>
+                  🌟 Student Council Officer
+                </Text>
+                <Text style={styles.roleDescription}>
+                  This student has elevated permissions for event management and
+                  school-wide attendance oversight.
+                </Text>
+                <TouchableOpacity
+                  style={styles.revertBtn}
+                  onPress={() => assignRole("student")}
+                >
+                  <Text style={styles.revertBtnText}>Revert to Student</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
 
         <Text style={styles.sectionTitle}>Reset Password</Text>
         <View style={styles.card}>
@@ -396,6 +463,37 @@ const styles = StyleSheet.create({
   },
   saveBtnDisabled: { opacity: 0.5 },
   saveBtnText: { color: "#0D0D0D", fontSize: 14, fontWeight: "800" },
+  roleDescription: {
+    color: "rgba(255,255,255,0.5)",
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  promoteBtn: {
+    backgroundColor: "#C8F04D",
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  promoteBtnText: { color: "#0D0D0D", fontSize: 14, fontWeight: "800" },
+  councilCard: {
+    backgroundColor: "rgba(200,240,77,0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(200,240,77,0.2)",
+  },
+  councilBadge: {
+    color: "#C8F04D",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  revertBtn: {
+    backgroundColor: "rgba(242,129,107,0.15)",
+    borderWidth: 1,
+    borderColor: "rgba(242,129,107,0.4)",
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  revertBtnText: { color: "#F2816B", fontSize: 14, fontWeight: "700" },
   resetBtn: {
     backgroundColor: "rgba(255,255,255,0.1)",
     borderWidth: 1,

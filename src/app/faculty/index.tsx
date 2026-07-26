@@ -1,4 +1,4 @@
-import { useRouter } from "expo-router";
+﻿import { useRouter } from "expo-router";
 import {
   SafeAreaView,
   StatusBar,
@@ -11,10 +11,7 @@ import { useAuthStore } from "../../../stores/authStore";
 
 export default function FacultyHome() {
   const router = useRouter();
-  const role = useAuthStore((s) => s.role);
-
-  // To check the role
-  console.log("DEBUG current role:", role);
+  const hasPermission = useAuthStore((s) => s.hasPermission);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -22,14 +19,16 @@ export default function FacultyHome() {
       <View style={styles.content}>
         <Text style={styles.title}>Faculty Home</Text>
 
-        <TouchableOpacity
-          style={styles.card}
-          onPress={() => router.push("/faculty/qrgenerator")}
-        >
-          <Text style={styles.cardEmoji}>📱</Text>
-          <Text style={styles.cardTitle}>Start Session</Text>
-          <Text style={styles.cardSub}>Generate QR for attendance</Text>
-        </TouchableOpacity>
+        {hasPermission("sessions:create_class") && (
+          <TouchableOpacity
+            style={styles.card}
+            onPress={() => router.push("/faculty/qrgenerator")}
+          >
+            <Text style={styles.cardEmoji}>📱</Text>
+            <Text style={styles.cardTitle}>Start Session</Text>
+            <Text style={styles.cardSub}>Generate QR for attendance</Text>
+          </TouchableOpacity>
+        )}
 
         <TouchableOpacity
           style={styles.card}
@@ -51,7 +50,7 @@ export default function FacultyHome() {
           </Text>
         </TouchableOpacity>
 
-        {role === "admin" && (
+        {hasPermission("admin:access") && (
           <TouchableOpacity
             style={styles.card}
             onPress={() => router.push("/admin")}
