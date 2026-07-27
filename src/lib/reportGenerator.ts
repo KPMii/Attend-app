@@ -56,7 +56,7 @@ export async function generateSessionPdf(sessionId: string) {
           scannedAt: record?.scannedAt ?? null,
         };
       })
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .sort((a: any, b: any) => a.name.localeCompare(b.name));
   } else {
     // Event session — no fixed roster, just show everyone who actually scanned
     const { data: attendance } = await supabase
@@ -71,7 +71,7 @@ export async function generateSessionPdf(sessionId: string) {
         status: a.status,
         scannedAt: a.scanned_at,
       }))
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .sort((a: any, b: any) => a.name.localeCompare(b.name));
   }
 
   const title = session.session_type === "event" ? session.event_name : session.subject;

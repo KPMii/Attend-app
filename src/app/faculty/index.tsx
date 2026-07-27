@@ -1,4 +1,4 @@
-﻿import { useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import {
   SafeAreaView,
   StatusBar,
@@ -12,20 +12,22 @@ import { useAuthStore } from "../../../stores/authStore";
 export default function FacultyHome() {
   const router = useRouter();
   const hasPermission = useAuthStore((s) => s.hasPermission);
+  const role = useAuthStore((s) => s.role);
+  const isStudentCouncil = role === "student_council_officer";
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
       <View style={styles.content}>
-        <Text style={styles.title}>Faculty Home</Text>
+        <Text style={styles.title}>{isStudentCouncil ? "Student Council" : "Faculty Home"}</Text>
 
-        {hasPermission("sessions:create_class") && (
+        {(hasPermission("sessions:create_event") || hasPermission("sessions:create_class")) && (
           <TouchableOpacity
             style={styles.card}
             onPress={() => router.push("/faculty/qrgenerator")}
           >
             <Text style={styles.cardEmoji}>📱</Text>
-            <Text style={styles.cardTitle}>Start Session</Text>
+            <Text style={styles.cardTitle}>{isStudentCouncil ? "New Event Session" : "Start Session"}</Text>
             <Text style={styles.cardSub}>Generate QR for attendance</Text>
           </TouchableOpacity>
         )}
@@ -37,6 +39,15 @@ export default function FacultyHome() {
           <Text style={styles.cardEmoji}>🎓</Text>
           <Text style={styles.cardTitle}>Manage Students</Text>
           <Text style={styles.cardSub}>Edit profiles, view attendance</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.card}
+          onPress={() => router.push("/faculty/sessions")}
+        >
+          <Text style={styles.cardEmoji}>📋</Text>
+          <Text style={styles.cardTitle}>Session History</Text>
+          <Text style={styles.cardSub}>View past sessions</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
