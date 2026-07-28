@@ -12,10 +12,16 @@ import {
   View,
 } from "react-native";
 import { logAction } from "../../../lib/audit";
+import {
+  buildRangeCsv,
+  buildSingleCsv,
+  shareCsv,
+} from "../../../lib/csvExport";
 import { supabase } from "../../../lib/supabase";
 
 type Section = { id: string; name: string };
 type SessionRow = { id: string; subject: string; created_at: string };
+type ExportFormat = "pdf" | "csv";
 
 export default function Reports() {
   const [sections, setSections] = useState<Section[]>([]);
@@ -24,6 +30,7 @@ export default function Reports() {
   );
 
   const [reportMode, setReportMode] = useState<"range" | "single">("range");
+  const [exportFormat, setExportFormat] = useState<ExportFormat>("pdf");
 
   const [startDate, setStartDate] = useState(
     new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10),
@@ -64,15 +71,55 @@ export default function Reports() {
     setSelectedSessionId(null);
   };
 
-  const generateRangeReport = async () => {
+  const fetchReportData = async () => {
+    if (!selectedSectionId) {
+      setError("Please select a section");
+      return null;
+    }
+    if (reportMode === "single" && !selectedSessionId) {
+      setError("Please select a session");
+      return null;
+    }
+
     const sectionName =
       sections.find((s) => s.id === selectedSectionId)?.name ??
       "Unknown Section";
 
+    if (reportMode === "single") {
+      const session = sessions.find((s) => s.id === selectedSessionId);
+      const { data: roster } = await supabase.rpc("get_section_roster", {
+        p_section_id: selectedSectionId,
+      });
+      const { data: attendance } = await supabase
+        .from("attendance")
+        .select("student_id, status, scanned_at")
+        .eq("session_id", selectedSessionId);
+      const attendanceMap = new Map(
+        (attendance ?? []).map((a) => [
+          a.student_id,
+          { status: a.status, scannedAt: a.scanned_at },
+        ]),
+      );
+      const rows = (roster ?? [])
+        .map((student: any) => ({
+          name: student.full_name,
+          schoolId: student.school_id_no,
+          status: attendanceMap.get(student.student_id)?.status ?? "absent",
+          scannedAt: attendanceMap.get(student.student_id)?.scannedAt ?? null,
+        }))
+        .sort((a: any, b: any) => a.name.localeCompare(b.name));
+      return {
+        type: "single" as const,
+        sectionName,
+        subject: session?.subject ?? "Unknown Subject",
+        sessionDate: session?.created_at ?? "",
+        rows,
+      };
+    }
+
     const { data: roster } = await supabase.rpc("get_section_roster", {
       p_section_id: selectedSectionId,
     });
-
     const { data: rangeSessions } = await supabase
       .from("sessions")
       .select("id, subject, created_at")
@@ -80,9 +127,7 @@ export default function Reports() {
       .gte("created_at", `${startDate}T00:00:00`)
       .lte("created_at", `${endDate}T23:59:59`)
       .order("created_at");
-
     const sessionIds = (rangeSessions ?? []).map((s) => s.id);
-
     const { data: attendance } =
       sessionIds.length > 0
         ? await supabase
@@ -90,14 +135,12 @@ export default function Reports() {
             .select("student_id, session_id, status")
             .in("session_id", sessionIds)
         : { data: [] };
-
     const attendanceMap = new Map<string, Map<string, string>>();
     (attendance ?? []).forEach((a) => {
       if (!attendanceMap.has(a.student_id))
         attendanceMap.set(a.student_id, new Map());
       attendanceMap.get(a.student_id)!.set(a.session_id, a.status);
     });
-
     const summaryRows = (roster ?? []).map((student: any) => {
       const studentAttendance =
         attendanceMap.get(student.student_id) ?? new Map();
@@ -119,89 +162,61 @@ export default function Reports() {
         total: (rangeSessions ?? []).length,
       };
     });
-
-    return buildRangeReportHtml({
+    return {
+      type: "range" as const,
       sectionName,
       startDate,
       endDate,
       totalSessions: (rangeSessions ?? []).length,
       rows: summaryRows,
-    });
-  };
-
-  const generateSingleSessionReport = async () => {
-    const sectionName =
-      sections.find((s) => s.id === selectedSectionId)?.name ??
-      "Unknown Section";
-    const session = sessions.find((s) => s.id === selectedSessionId);
-
-    const { data: roster } = await supabase.rpc("get_section_roster", {
-      p_section_id: selectedSectionId,
-    });
-
-    const { data: attendance } = await supabase
-      .from("attendance")
-      .select("student_id, status, scanned_at")
-      .eq("session_id", selectedSessionId);
-
-    const attendanceMap = new Map(
-      (attendance ?? []).map((a) => [
-        a.student_id,
-        { status: a.status, scannedAt: a.scanned_at },
-      ]),
-    );
-
-    const rows = (roster ?? []).map((student: any) => {
-      const record = attendanceMap.get(student.student_id);
-      return {
-        name: student.full_name,
-        schoolId: student.school_id_no,
-        status: record?.status ?? "absent",
-        scannedAt: record?.scannedAt ?? null,
-      };
-    });
-
-    rows.sort((a, b) => a.name.localeCompare(b.name));
-
-    return buildSingleSessionHtml({
-      sectionName,
-      subject: session?.subject ?? "Unknown Subject",
-      sessionDate: session?.created_at ?? "",
-      rows,
-    });
+    };
   };
 
   const generateReport = async () => {
-    if (!selectedSectionId) {
-      setError("Please select a section");
-      return;
-    }
-    if (reportMode === "single" && !selectedSessionId) {
-      setError("Please select a session");
-      return;
-    }
-
     setError(null);
     setGenerating(true);
-
     try {
-      const html =
-        reportMode === "single"
-          ? await generateSingleSessionReport()
-          : await generateRangeReport();
+      const data = await fetchReportData();
+      if (!data) {
+        setGenerating(false);
+        return;
+      }
 
-      const { uri } = await Print.printToFileAsync({ html });
+      if (exportFormat === "csv") {
+        const csv =
+          data.type === "single"
+            ? buildSingleCsv(data.rows)
+            : buildRangeCsv(data.rows);
+        await shareCsv(
+          csv,
+          `attendance_${data.sectionName.replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}`,
+        );
+      } else {
+        const html =
+          data.type === "single"
+            ? buildSingleSessionHtml({
+                sectionName: data.sectionName,
+                subject: data.subject,
+                sessionDate: data.sessionDate,
+                rows: data.rows,
+              })
+            : buildRangeReportHtml({
+                sectionName: data.sectionName,
+                startDate: data.startDate,
+                endDate: data.endDate,
+                totalSessions: data.totalSessions,
+                rows: data.rows,
+              });
+        const { uri } = await Print.printToFileAsync({ html });
+        if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri);
+      }
 
       logAction("session_created", {
         description:
           reportMode === "single"
-            ? `Generated single-session report`
-            : `Generated range report (${startDate} to ${endDate})`,
+            ? `Generated ${exportFormat.toUpperCase()} single-session report`
+            : `Generated ${exportFormat.toUpperCase()} range report (${startDate} to ${endDate})`,
       });
-
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri);
-      }
     } catch (err) {
       console.error("Report generation error:", err);
       setError("Failed to generate report. Please try again.");
@@ -284,7 +299,6 @@ export default function Reports() {
               placeholder="YYYY-MM-DD"
               placeholderTextColor="rgba(255,255,255,0.25)"
             />
-
             <Text style={styles.label}>End Date</Text>
             <TextInput
               style={styles.input}
@@ -294,36 +308,65 @@ export default function Reports() {
               placeholderTextColor="rgba(255,255,255,0.25)"
             />
           </>
+        ) : !selectedSectionId ? (
+          <Text style={styles.hint}>Select a section first</Text>
+        ) : sessions.length === 0 ? (
+          <Text style={styles.hint}>No sessions found for this section</Text>
         ) : (
-          <>
-            <Text style={styles.label}>Session</Text>
-            {!selectedSectionId ? (
-              <Text style={styles.hint}>Select a section first</Text>
-            ) : sessions.length === 0 ? (
-              <Text style={styles.hint}>
-                No sessions found for this section
-              </Text>
-            ) : (
-              <View style={styles.sessionList}>
-                {sessions.map((s) => (
-                  <TouchableOpacity
-                    key={s.id}
-                    style={[
-                      styles.sessionRow,
-                      selectedSessionId === s.id && styles.sessionRowActive,
-                    ]}
-                    onPress={() => setSelectedSessionId(s.id)}
-                  >
-                    <Text style={styles.sessionSubject}>{s.subject}</Text>
-                    <Text style={styles.sessionDate}>
-                      {new Date(s.created_at).toLocaleString()}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
-          </>
+          <View style={styles.sessionList}>
+            {sessions.map((s) => (
+              <TouchableOpacity
+                key={s.id}
+                style={[
+                  styles.sessionRow,
+                  selectedSessionId === s.id && styles.sessionRowActive,
+                ]}
+                onPress={() => setSelectedSessionId(s.id)}
+              >
+                <Text style={styles.sessionSubject}>{s.subject}</Text>
+                <Text style={styles.sessionDate}>
+                  {new Date(s.created_at).toLocaleString()}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         )}
+
+        <Text style={styles.label}>Export Format</Text>
+        <View style={styles.formatToggleRow}>
+          <TouchableOpacity
+            style={[
+              styles.formatToggle,
+              exportFormat === "pdf" && styles.formatToggleActive,
+            ]}
+            onPress={() => setExportFormat("pdf")}
+          >
+            <Text
+              style={[
+                styles.formatToggleText,
+                exportFormat === "pdf" && styles.formatToggleTextActive,
+              ]}
+            >
+              PDF
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.formatToggle,
+              exportFormat === "csv" && styles.formatToggleActive,
+            ]}
+            onPress={() => setExportFormat("csv")}
+          >
+            <Text
+              style={[
+                styles.formatToggleText,
+                exportFormat === "csv" && styles.formatToggleTextActive,
+              ]}
+            >
+              Excel (CSV)
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         {error && <Text style={styles.errorText}>{error}</Text>}
 
@@ -333,7 +376,9 @@ export default function Reports() {
           disabled={generating}
         >
           <Text style={styles.generateBtnText}>
-            {generating ? "Generating..." : "Generate PDF Report"}
+            {generating
+              ? "Generating..."
+              : `Generate ${exportFormat === "pdf" ? "PDF" : "CSV"} Report`}
           </Text>
         </TouchableOpacity>
       </ScrollView>
@@ -563,4 +608,24 @@ const styles = StyleSheet.create({
   },
   generateBtnDisabled: { opacity: 0.5 },
   generateBtnText: { color: "#0D0D0D", fontSize: 16, fontWeight: "800" },
+  formatToggleRow: {
+    flexDirection: "row",
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderRadius: 14,
+    padding: 4,
+    marginBottom: 8,
+  },
+  formatToggle: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  formatToggleActive: { backgroundColor: "#C8F04D" },
+  formatToggleText: {
+    color: "rgba(255,255,255,0.5)",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  formatToggleTextActive: { color: "#0D0D0D" },
 });
