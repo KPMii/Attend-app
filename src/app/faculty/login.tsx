@@ -12,8 +12,8 @@ import {
   View,
 } from "react-native";
 import { facultyLogin } from "../../lib/auth";
-import { supabase } from "../../lib/supabase";
 import type { Role } from "../../lib/permissions";
+import { supabase } from "../../lib/supabase";
 
 export default function FacultyLogin() {
   const router = useRouter();
@@ -47,7 +47,7 @@ export default function FacultyLogin() {
       if (role === "admin") {
         router.replace("/admin");
       } else if (role === "student_council_officer") {
-        router.replace("/faculty"); // share faculty UI
+        router.replace("/faculty/student-council");
       } else {
         router.replace("/faculty");
       }

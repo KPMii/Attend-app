@@ -1,5 +1,5 @@
 import * as Crypto from "expo-crypto";
-import { Stack, useRouter } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
   Animated,
@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useAuthStore } from "../../../stores/authStore";
 import { LazyQRCode } from "../../components/lazyQRCode";
 import { logAction } from "../../lib/audit";
 import { getDB, markSynced, saveSession } from "../../lib/db";
@@ -179,8 +180,13 @@ function CountdownRing({ seconds, total }: { seconds: number; total: number }) {
 
 export default function QRGenerator() {
   const router = useRouter();
+  const { resume } = useLocalSearchParams<{ resume?: string }>();
+  const role = useAuthStore((s) => s.role);
+  const isStudentCouncil = role === "student_council_officer";
 
-  const [sessionType, setSessionType] = useState<SessionType>("class");
+  const [sessionType, setSessionType] = useState<SessionType>(
+    isStudentCouncil ? "event" : "class",
+  );
   const [eventName, setEventName] = useState("");
 
   const [subjects, setSubjects] = useState<{ id: string; name: string }[]>([]);
@@ -236,6 +242,24 @@ export default function QRGenerator() {
         if (data) setSections(data);
       });
   }, []);
+
+  // Pre-fill from resumed session
+  useEffect(() => {
+    if (!resume) return;
+    supabase
+      .from("sessions")
+      .select("subject, room, event_name, session_type")
+      .eq("id", resume)
+      .single()
+      .then(({ data }) => {
+        if (!data) return;
+        setSessionType((data.session_type as SessionType) || "event");
+        if (data.session_type === "event") {
+          setEventName(data.event_name || data.subject);
+          setEventRoom(data.room);
+        }
+      });
+  }, [resume]);
 
   const buildSession = async (t: string): Promise<SessionPayload> => {
     const {

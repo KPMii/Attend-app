@@ -9,29 +9,24 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useAuthStore } from "../../../../stores/authStore";
 import { PAGE_SIZE, getRange } from "../../../lib/pagination";
 import { supabase } from "../../../lib/supabase";
 
-type SessionRow = {
+type EventRow = {
   id: string;
-  subject: string;
+  event_name: string;
   room: string;
   created_at: string;
-  session_type: string;
-  event_name: string | null;
 };
 
-export default function FacultySessionHistory() {
+export default function EventHistory() {
   const router = useRouter();
-  const role = useAuthStore((s) => s.role);
-  const isStudentCouncil = role === "student_council_officer";
-  const [sessions, setSessions] = useState<SessionRow[]>([]);
+  const [events, setEvents] = useState<EventRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
 
-  const fetchSessions = async () => {
+  const fetchEvents = async () => {
     setLoading(true);
     const {
       data: { user },
@@ -40,78 +35,70 @@ export default function FacultySessionHistory() {
 
     const { from, to } = getRange(page);
 
+    // TODO: decide scope — only events THIS council member created,
+    // or all events school-wide? Currently scoped to own (faculty_id).
     const { data, count } = await supabase
       .from("sessions")
-      .select("id, subject, room, created_at, session_type, event_name", {
-        count: "exact",
-      })
+      .select("id, event_name, room, created_at", { count: "exact" })
+      .eq("session_type", "event")
       .eq("faculty_id", user.id)
       .order("created_at", { ascending: false })
       .range(from, to);
 
-    if (data) setSessions(data);
+    if (data) setEvents(data as any);
     setTotalCount(count ?? 0);
     setLoading(false);
   };
 
   useEffect(() => {
-    fetchSessions();
+    fetchEvents();
   }, [page]);
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
       <View style={styles.header}>
-        <Text style={styles.title}>Session History</Text>
-        <Text style={styles.subtitle}>{totalCount} total sessions</Text>
+        <Text style={styles.title}>Event History</Text>
+        <Text style={styles.subtitle}>{totalCount} total events</Text>
       </View>
 
       <FlatList
-        data={sessions}
+        data={events}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         refreshing={loading}
-        onRefresh={fetchSessions}
+        onRefresh={fetchEvents}
         renderItem={({ item }) => (
           <View style={styles.row}>
             <TouchableOpacity
               style={styles.rowLeft}
-              onPress={() => router.push(`/faculty/sessions/${item.id}`)}
+              onPress={() =>
+                router.push(
+                  `/faculty/student-council/event-details?id=${item.id}`,
+                )
+              }
             >
-              <View style={styles.rowHeader}>
-                <Text style={styles.subject}>
-                  {item.session_type === "event"
-                    ? item.event_name
-                    : item.subject}
-                </Text>
-                {item.session_type === "event" && (
-                  <View style={styles.eventBadge}>
-                    <Text style={styles.eventBadgeText}>EVENT</Text>
-                  </View>
-                )}
-              </View>
+              <Text style={styles.eventName}>{item.event_name}</Text>
               <Text style={styles.meta}>
                 {item.room} · {new Date(item.created_at).toLocaleString()}
               </Text>
             </TouchableOpacity>
-            {isStudentCouncil && item.session_type === "event" && (
-              <TouchableOpacity
-                style={styles.resumeBtn}
-                onPress={() =>
-                  router.push({
-                    pathname: "/faculty/qrgenerator",
-                    params: { resume: item.id },
-                  })
-                }
-              >
-                <Text style={styles.resumeBtnText}>↻ Resume</Text>
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity
+              style={styles.resumeBtn}
+              onPress={() =>
+                router.push({
+                  pathname: "/faculty/qrgenerator",
+                  params: { resume: item.id },
+                })
+              }
+            >
+              <Text style={styles.resumeBtnText}>↻ Resume</Text>
+            </TouchableOpacity>
             <Text style={styles.chevron}>›</Text>
           </View>
         )}
         ListEmptyComponent={
-          !loading ? <Text style={styles.empty}>No sessions yet</Text> : null
+          !loading ? <Text style={styles.empty}>No events yet</Text> : null
         }
       />
 
@@ -160,17 +147,17 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   rowLeft: { flex: 1 },
-  rowHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
-  subject: { color: "#fff", fontSize: 15, fontWeight: "600" },
-  eventBadge: {
-    backgroundColor: "rgba(200,240,77,0.15)",
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  eventBadgeText: { color: "#C8F04D", fontSize: 9, fontWeight: "800" },
+  eventName: { color: "#fff", fontSize: 15, fontWeight: "600" },
   meta: { color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 2 },
   chevron: { color: "rgba(255,255,255,0.3)", fontSize: 22 },
+  resumeBtn: {
+    backgroundColor: "rgba(200,240,77,0.15)",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginRight: 8,
+  },
+  resumeBtnText: { color: "#C8F04D", fontSize: 12, fontWeight: "700" },
   empty: { color: "rgba(255,255,255,0.3)", textAlign: "center", marginTop: 40 },
   pagerRow: {
     flexDirection: "row",
@@ -188,16 +175,4 @@ const styles = StyleSheet.create({
   pagerBtnDisabled: { opacity: 0.3 },
   pagerBtnText: { color: "#fff", fontSize: 13, fontWeight: "600" },
   pagerLabel: { color: "rgba(255,255,255,0.4)", fontSize: 12 },
-  resumeBtn: {
-    backgroundColor: "rgba(200,240,77,0.15)",
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginRight: 8,
-  },
-  resumeBtnText: {
-    color: "#C8F04D",
-    fontSize: 12,
-    fontWeight: "700",
-  },
 });

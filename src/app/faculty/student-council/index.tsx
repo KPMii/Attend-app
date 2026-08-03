@@ -1,4 +1,4 @@
-﻿import { useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import {
   SafeAreaView,
   StatusBar,
@@ -7,14 +7,13 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useAuthStore } from "../../../stores/authStore";
-import { logout } from "../../lib/auth";
+import { useAuthStore } from "../../../../stores/authStore";
+import { logout } from "../../../lib/auth";
 
-export default function FacultyHome() {
+export default function StudentCouncilHome() {
   const router = useRouter();
+  const fullName = useAuthStore((s) => s.fullName);
   const hasPermission = useAuthStore((s) => s.hasPermission);
-  const role = useAuthStore((s) => s.role);
-  const isStudentCouncil = role === "student_council_officer";
 
   const handleLogout = async () => {
     await logout();
@@ -26,9 +25,10 @@ export default function FacultyHome() {
       <StatusBar barStyle="light-content" />
       <View style={styles.content}>
         <View style={styles.headerRow}>
-          <Text style={styles.title}>
-            {isStudentCouncil ? "Student Council" : "Faculty Home"}
-          </Text>
+          <View>
+            <Text style={styles.title}>Student Council</Text>
+            <Text style={styles.subtitle}>{fullName}</Text>
+          </View>
           <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
             <Text style={styles.logoutBtnText}>Logout</Text>
           </TouchableOpacity>
@@ -40,53 +40,40 @@ export default function FacultyHome() {
             onPress={() => router.push("/faculty/qrgenerator")}
           >
             <Text style={styles.cardEmoji}>📱</Text>
-            <Text style={styles.cardTitle}>
-              {isStudentCouncil ? "New Event Session" : "Start Session"}
-            </Text>
-            <Text style={styles.cardSub}>Generate QR for attendance</Text>
-          </TouchableOpacity>
-        )}
-
-        {!isStudentCouncil && (
-          <TouchableOpacity
-            style={styles.card}
-            onPress={() => router.push("/faculty/students")}
-          >
-            <Text style={styles.cardEmoji}>🎓</Text>
-            <Text style={styles.cardTitle}>Manage Students</Text>
-            <Text style={styles.cardSub}>Edit profiles, view attendance</Text>
+            <Text style={styles.cardTitle}>Start Event Session</Text>
+            <Text style={styles.cardSub}>Generate QR for an event</Text>
           </TouchableOpacity>
         )}
 
         <TouchableOpacity
           style={styles.card}
-          onPress={() => router.push("/faculty/sessions")}
+          onPress={() => router.push("/faculty/student-council/event-history")}
         >
-          <Text style={styles.cardEmoji}>📋</Text>
-          <Text style={styles.cardTitle}>Session History</Text>
-          <Text style={styles.cardSub}>View past sessions</Text>
+          <Text style={styles.cardEmoji}>🕓</Text>
+          <Text style={styles.cardTitle}>Event History</Text>
+          <Text style={styles.cardSub}>View past events, resume or export</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.card}
-          onPress={() => router.push("/faculty/reports")}
-        >
-          <Text style={styles.cardEmoji}>📄</Text>
-          <Text style={styles.cardTitle}>My Reports</Text>
-          <Text style={styles.cardSub}>
-            Generate attendance PDFs for your classes
-          </Text>
-        </TouchableOpacity>
-
-        {hasPermission("admin:access") && (
+        {hasPermission("audit:view") && (
           <TouchableOpacity
             style={styles.card}
-            onPress={() => router.push("/admin")}
+            onPress={() => router.push("/admin/audit")}
           >
-            <Text style={styles.cardEmoji}>⚙️</Text>
-            <Text style={styles.cardTitle}>Admin Panel</Text>
+            <Text style={styles.cardEmoji}>📋</Text>
+            <Text style={styles.cardTitle}>Audit Log</Text>
+            <Text style={styles.cardSub}>View activity history</Text>
+          </TouchableOpacity>
+        )}
+
+        {hasPermission("reports:export") && (
+          <TouchableOpacity
+            style={styles.card}
+            onPress={() => router.push("/faculty/reports")}
+          >
+            <Text style={styles.cardEmoji}>📄</Text>
+            <Text style={styles.cardTitle}>Reports &amp; Export</Text>
             <Text style={styles.cardSub}>
-              Manage subjects, sections, students
+              Generate CSV, Excel &amp; PDF reports
             </Text>
           </TouchableOpacity>
         )}
@@ -107,12 +94,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 8,
   },
   title: {
     color: "#fff",
     fontSize: 28,
     fontWeight: "800",
+  },
+  subtitle: {
+    color: "rgba(255,255,255,0.4)",
+    fontSize: 14,
+    marginTop: 2,
   },
   logoutBtn: {
     backgroundColor: "rgba(242,129,107,0.12)",

@@ -1,3 +1,4 @@
+import { logout } from "@/lib/auth";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
@@ -49,6 +50,11 @@ export default function AdminHome() {
       subjects: subjects ?? 0,
       sections: sections ?? 0,
     });
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    router.replace("/");
   };
 
   const menuItems = [
@@ -139,6 +145,11 @@ export default function AdminHome() {
             </TouchableOpacity>
           ))}
         </View>
+        <View style={styles.menu}>
+          <TouchableOpacity onPress={handleLogout}>
+            <Text style={styles.logOutText}>Log Out</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -172,4 +183,5 @@ const styles = StyleSheet.create({
   menuTitle: { color: "#fff", fontSize: 15, fontWeight: "700" },
   menuSub: { color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 2 },
   chevron: { color: "rgba(255,255,255,0.3)", fontSize: 20 },
+  logOutText: { color: "rgba(239, 68, 68, 1)", fontSize: 15 },
 });

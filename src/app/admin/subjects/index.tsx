@@ -96,7 +96,10 @@ export default function AdminSubjects() {
   };
 
   const removeSubject = async (id: string) => {
-    await supabase.from("subjects").delete().eq("id", id);
+    await supabase.from("sessions").update({ subject_id: null }).eq("subject_id", id);
+    const { error: delError } = await supabase.from("subjects").delete().eq("id", id);
+    if (delError) { setError(delError.message); return; }
+    fetchSubjects();
     fetchSubjects();
   };
 

@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "../../../stores/authStore";
+import { logout } from "../../lib/auth";
 
 const QRLanding = () => {
   const [permission, reqPermission] = useCameraPermissions();
@@ -10,6 +11,11 @@ const QRLanding = () => {
   const schoolIdNo = useAuthStore((s) => s.schoolIdNo);
 
   const isPermissionGranted = Boolean(permission?.granted);
+
+  const handleLogout = async () => {
+    await logout();
+    router.replace("/");
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -30,6 +36,10 @@ const QRLanding = () => {
         >
           Scan QR
         </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
+        <Text style={styles.logoutBtnText}>Logout</Text>
       </TouchableOpacity>
     </SafeAreaView>
   );
@@ -60,6 +70,16 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     paddingVertical: 12,
   },
+  logoutBtn: {
+    backgroundColor: "rgba(242,129,107,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(242,129,107,0.3)",
+    borderRadius: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    marginTop: 8,
+  },
+  logoutBtnText: { color: "#F2816B", fontSize: 14, fontWeight: "700" },
 });
 
 export default QRLanding;

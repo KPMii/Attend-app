@@ -64,37 +64,37 @@ export default function DebugScan() {
       addLog("🔐 Verifying signature...");
       const isValid = await verifySignature(session);
       if (!isValid) {
-        addLog("❌ Signature mismatch — QR is invalid or tampered");
+        addLog("Signature mismatch, QR is invalid or tampered");
         setLoading(false);
         return;
       }
-      addLog("✅ Signature valid");
+      addLog("Signature valid");
 
       if (new Date(session.expiresAt).getTime() < Date.now()) {
-        addLog("❌ Session has expired");
+        addLog("Session has expired");
         setLoading(false);
         return;
       }
-      addLog("✅ Session not expired");
+      addLog("Session not expired");
 
-      addLog("👤 Checking logged-in user...");
+      addLog("Checking logged-in user...");
       const {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) {
-        addLog("❌ Not logged in — log in as a student first");
+        addLog("Not logged in. log in as a student first");
         setLoading(false);
         return;
       }
-      addLog(`✅ Logged in as: ${user.id}`);
+      addLog(`Logged in as: ${user.id}`);
 
       const isLate = checkIfLate(session);
-      addLog(isLate ? "🕓 Status: LATE" : "✅ Status: PRESENT");
+      addLog(isLate ? "Status: LATE" : "Status: PRESENT");
 
       const attendanceId = `att_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
       const scannedAt = new Date().toISOString();
 
-      addLog("💾 Saving locally (offline-first)...");
+      addLog("Saving locally (offline-first)...");
       await saveAttendance({
         id: attendanceId,
         session_id: session.id,
@@ -119,16 +119,14 @@ export default function DebugScan() {
           });
         if (insertError) throw insertError;
         await markSynced("attendance", attendanceId);
-        addLog("✅ Synced to Supabase successfully!");
+        addLog("Synced to Supabase successfully!");
       } catch (syncErr: any) {
-        addLog(
-          `⚠️ Sync failed (queued for later): ${syncErr.message ?? syncErr}`,
-        );
+        addLog(`Sync failed (queued for later): ${syncErr.message ?? syncErr}`);
       }
 
       addLog("🎉 Test scan complete!");
     } catch (err: any) {
-      addLog(`❌ Error: ${err.message ?? "Invalid JSON or unexpected error"}`);
+      addLog(`Error: ${err.message ?? "Invalid JSON or unexpected error"}`);
     } finally {
       setLoading(false);
     }

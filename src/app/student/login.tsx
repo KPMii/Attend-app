@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useAuthStore } from "../../../stores/authStore";
 import { studentLogin } from "../../lib/auth";
 
 export default function StudentLogin() {
@@ -30,7 +31,22 @@ export default function StudentLogin() {
 
     try {
       await studentLogin(schoolIdNo.trim(), password);
-      router.replace("/student");
+
+      // Wait for auth store to hydrate so we know the role
+      await useAuthStore.getState().hydrate();
+      const role = useAuthStore.getState().role;
+
+      // Redirect based on role — student council officers and faculty
+      // should NOT land on the student screens
+      if (role === "student_council_officer") {
+        router.replace("/faculty/student-council");
+      } else if (role === "admin") {
+        router.replace("/admin");
+      } else if (role === "faculty") {
+        router.replace("/faculty");
+      } else {
+        router.replace("/student");
+      }
     } catch (err) {
       console.log("LOGIN ERROR:", err);
       setError("Invalid School ID or password. Please try again.");

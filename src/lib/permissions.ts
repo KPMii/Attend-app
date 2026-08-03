@@ -47,11 +47,13 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "attendance:view_own",
     "attendance:view_any",
     "sessions:create_event",
+    "sessions:end",
     "reports:view_own",
     "reports:export",
     "users:view",
     "users:edit_own",
     "sections:view",
+    "audit:view",
   ],
 
   admin: [

@@ -1,4 +1,4 @@
-import { Stack, useLocalSearchParams } from "expo-router";
+import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   SafeAreaView,
@@ -6,6 +6,7 @@ import {
   StatusBar,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { supabase } from "../../../lib/supabase";
@@ -151,6 +152,20 @@ export default function SessionDetail() {
           )}
         </View>
 
+        {sessionInfo?.sessionType === "event" && (
+          <TouchableOpacity
+            style={styles.resumeSessionBtn}
+            onPress={() =>
+              router.push({
+                pathname: "/faculty/qrgenerator",
+                params: { resume: id },
+              })
+            }
+          >
+            <Text style={styles.resumeSessionBtnText}>🔄 Start Again</Text>
+          </TouchableOpacity>
+        )}
+
         {loading ? (
           <Text style={styles.empty}>Loading...</Text>
         ) : rows.length === 0 ? (
@@ -207,4 +222,18 @@ const styles = StyleSheet.create({
   idText: { color: "rgba(255,255,255,0.4)", fontSize: 12 },
   status: { fontSize: 13, fontWeight: "700" },
   empty: { color: "rgba(255,255,255,0.3)", textAlign: "center", marginTop: 40 },
+  resumeSessionBtn: {
+    backgroundColor: "rgba(200,240,77,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(200,240,77,0.3)",
+    borderRadius: 14,
+    paddingVertical: 12,
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  resumeSessionBtnText: {
+    color: "#C8F04D",
+    fontSize: 14,
+    fontWeight: "700",
+  },
 });

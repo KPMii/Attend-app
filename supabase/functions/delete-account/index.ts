@@ -55,6 +55,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Account not found in your school" }), { status: 404 });
     }
 
+    await supabaseAdmin.from("attendance").delete().eq("student_id", targetUserId);
     const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(targetUserId);
     if (deleteError) {
       return new Response(JSON.stringify({ error: deleteError.message }), { status: 400 });
