@@ -1,4 +1,3 @@
-import { LazyCameraView } from "../../../components/lazyCamera";
 import * as Crypto from "expo-crypto";
 import { Stack } from "expo-router";
 import { useState } from "react";
@@ -12,6 +11,7 @@ import {
   View,
 } from "react-native";
 import { useAuthStore } from "../../../../stores/authStore";
+import { LazyCameraView } from "../../../components/lazyCamera";
 import { markSynced, saveAttendance } from "../../../lib/db";
 
 import { supabase } from "../../../lib/supabase";
@@ -92,7 +92,7 @@ export default function QRScanner() {
         throw new Error("This session belongs to a different school");
       }
 
-      // 4. Roster check Ã¢â‚¬â€ only for CLASS sessions, events have no roster
+      // 4. Roster check only for CLASS sessions, events have no roster
       if (session.sessionType === "class" && session.sectionId) {
         const { data: enrollment } = await supabase
           .from("section_enrollments")
