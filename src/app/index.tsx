@@ -1,5 +1,6 @@
 import { useRouter } from "expo-router";
 import {
+  Image,
   SafeAreaView,
   StatusBar,
   StyleSheet,
@@ -15,25 +16,29 @@ export default function RoleSelect() {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
       <View style={styles.content}>
-        <Text style={styles.title}>Attend</Text>
+        <Text style={styles.title}>Welcome</Text>
         <Text style={styles.subtitle}>Choose how you'd like to sign in</Text>
+
+        <Image
+          source={require("./assets/logo.png")}
+          style={{
+            width: 215,
+            height: 210,
+          }}
+        />
 
         <TouchableOpacity
           style={[styles.card, styles.facultyCard]}
-          onPress={() => router.push("/faculty/login")}
+          onPress={() => router.push("/student/login")}
         >
-          <Text style={styles.cardEmoji}>🧑‍🏫</Text>
-          <Text style={styles.cardTitle}>I'm Faculty</Text>
-          <Text style={styles.cardSub}>Start sessions, view attendance</Text>
+          <Text style={styles.cardText}>Student</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.card, styles.studentCard]}
-          onPress={() => router.push("/student/login")}
+          onPress={() => router.push("/faculty/login")}
         >
-          <Text style={styles.cardEmoji}>🎓</Text>
-          <Text style={styles.cardTitle}>I'm a Student</Text>
-          <Text style={styles.cardSub}>Scan QR to mark attendance</Text>
+          <Text style={styles.cardText}>Faculty</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -41,43 +46,42 @@ export default function RoleSelect() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0D0D0D" },
+  container: { flex: 1, backgroundColor: "#F9F9FF" },
   content: {
     flex: 1,
     justifyContent: "center",
+    alignItems: "center",
     paddingHorizontal: 24,
     gap: 16,
   },
   title: {
-    color: "#fff",
-    fontSize: 34,
+    color: "#000000",
+    fontSize: 48,
     fontWeight: "800",
     letterSpacing: -1,
     textAlign: "center",
-    marginBottom: 4,
   },
   subtitle: {
-    color: "rgba(255,255,255,0.45)",
-    fontSize: 14,
+    color: "#6B7280",
+    fontSize: 16,
     textAlign: "center",
     marginBottom: 24,
   },
   card: {
     borderRadius: 20,
-    padding: 24,
+    paddingHorizontal: 100,
+    paddingVertical: 15,
     borderWidth: 1,
     alignItems: "center",
     gap: 6,
   },
   facultyCard: {
-    backgroundColor: "rgba(200,240,77,0.08)",
+    backgroundColor: "#305CDE",
     borderColor: "rgba(200,240,77,0.25)",
   },
   studentCard: {
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: "#305CDE",
     borderColor: "rgba(255,255,255,0.1)",
   },
-  cardEmoji: { fontSize: 32, marginBottom: 4 },
-  cardTitle: { color: "#fff", fontSize: 18, fontWeight: "800" },
-  cardSub: { color: "rgba(255,255,255,0.4)", fontSize: 13 },
+  cardText: { color: "#FFFFFF", fontSize: 13, fontWeight: "bold" },
 });

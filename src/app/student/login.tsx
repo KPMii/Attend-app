@@ -1,10 +1,10 @@
 ﻿import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
+  Image,
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
-  StatusBar,
   StyleSheet,
   Text,
   TextInput,
@@ -19,6 +19,7 @@ export default function StudentLogin() {
   const [schoolIdNo, setSchoolIdNo] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const isValidSchoolId = /^[A-Za-z0-9]{5,12}$/.test(schoolIdNo.trim());
@@ -57,14 +58,13 @@ export default function StudentLogin() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={styles.flex}
       >
         <View style={styles.content}>
           <View style={styles.header}>
-            <Text style={styles.title}>Student Login</Text>
+            <Text style={styles.title}>Student Sign in</Text>
             <Text style={styles.subtitle}>Sign in to mark your attendance</Text>
           </View>
 
@@ -73,7 +73,7 @@ export default function StudentLogin() {
             <TextInput
               style={styles.input}
               placeholder="e.g. 123456"
-              placeholderTextColor="rgba(255,255,255,0.25)"
+              placeholderTextColor="#6B7280"
               value={schoolIdNo}
               onChangeText={(t) =>
                 setSchoolIdNo(t.replace(/[^A-Za-z0-9]/g, "").slice(0, 12))
@@ -83,22 +83,40 @@ export default function StudentLogin() {
             />
             {schoolIdNo.length > 0 && !isValidSchoolId && (
               <Text style={styles.fieldError}>
-                School ID must be 5–12 letters/numbers
+                School ID must be 5-12 letters/numbers
               </Text>
             )}
-
             <Text style={styles.label}>Password</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your password"
-              placeholderTextColor="rgba(255,255,255,0.25)"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
-
+            <View style={styles.passwordContainer}>
+              <Image
+                source={require("../assets/icons/keyLock.png")}
+                style={styles.passwordIcon}
+                resizeMode="contain"
+              />
+              <TextInput
+                style={styles.passwordInput}
+                placeholder={showPassword ? "123456" : "••••••••"}
+                placeholderTextColor="#6B7280"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+              />
+              <TouchableOpacity
+                onPress={() => setShowPassword(!showPassword)}
+                style={styles.eyeButton}
+              >
+                <Image
+                  source={
+                    showPassword
+                      ? require("../assets/icons/eye.png")
+                      : require("../assets/icons/eye.png")
+                  }
+                  style={styles.eyeIcon}
+                  resizeMode="contain"
+                />
+              </TouchableOpacity>
+            </View>
             {error && <Text style={styles.errorText}>{error}</Text>}
-
             <TouchableOpacity
               style={[styles.loginBtn, !canSubmit && styles.loginBtnDisabled]}
               onPress={handleLogin}
@@ -109,6 +127,22 @@ export default function StudentLogin() {
               </Text>
             </TouchableOpacity>
           </View>
+          <View style={styles.divider}>
+            <View style={styles.dash} />
+            <Text style={styles.dashText}>Are you a faculty?</Text>
+            <View style={styles.dash} />
+          </View>
+
+          <TouchableOpacity
+            style={styles.facultySignButton}
+            onPress={() => router.push("/faculty/login")}
+          >
+            <Text style={styles.facultySignText}>Sign in as Faculty</Text>
+            <Image
+              style={styles.facultySignIcon}
+              source={require("../assets/icons/FacultyContact.png")}
+            />
+          </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -116,37 +150,81 @@ export default function StudentLogin() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0D0D0D" },
-  flex: { flex: 1 },
-  content: { flex: 1, justifyContent: "center", paddingHorizontal: 24 },
-  header: { marginBottom: 32, gap: 4 },
-  title: {
-    color: "#fff",
-    fontSize: 28,
-    fontWeight: "800",
-    letterSpacing: -0.5,
+  container: {
+    flex: 1,
+    backgroundColor: "#F9F9FF",
   },
-  subtitle: { color: "rgba(255,255,255,0.45)", fontSize: 14 },
-  form: { gap: 8 },
+
+  flex: {
+    flex: 1,
+  },
+
+  content: {
+    flex: 1,
+    justifyContent: "center",
+    paddingHorizontal: 24,
+  },
+
+  header: {
+    marginBottom: 32,
+    gap: 4,
+  },
+
+  title: {
+    color: "#111C2D",
+    fontSize: 24,
+    fontWeight: "bold",
+    letterSpacing: -0.5,
+    textAlign: "center",
+  },
+
+  subtitle: {
+    color: "#6B7280",
+    fontSize: 16,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+
+  form: {
+    gap: 8,
+    padding: 20,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 24,
+    borderColor: "#D8E3FB",
+    borderWidth: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+
   label: {
-    color: "rgba(255,255,255,0.5)",
+    color: "#434654",
     fontSize: 12,
     fontWeight: "600",
     letterSpacing: 0.5,
     marginTop: 12,
     textTransform: "uppercase",
   },
+
   input: {
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: "#F1F5F9",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.1)",
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    color: "#fff",
+    color: "#6B7280",
     fontSize: 15,
   },
-  fieldError: { color: "#F2816B", fontSize: 12, marginTop: 4 },
+
+  fieldError: {
+    color: "#F2816B",
+    fontSize: 12,
+    marginTop: 4,
+  },
+
   errorText: {
     color: "#F2816B",
     fontSize: 13,
@@ -154,12 +232,78 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   loginBtn: {
-    backgroundColor: "#C8F04D",
+    backgroundColor: "#305CDE",
     borderRadius: 16,
     paddingVertical: 16,
     alignItems: "center",
     marginTop: 24,
   },
-  loginBtnDisabled: { opacity: 0.35 },
-  loginBtnText: { color: "#0D0D0D", fontSize: 16, fontWeight: "800" },
+
+  loginBtnDisabled: {
+    opacity: 0.35,
+  },
+
+  loginBtnText: {
+    color: "#FFFFFF",
+    fontSize: 24,
+    fontWeight: "semibold",
+  },
+
+  divider: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 28,
+  },
+
+  dash: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#C4C5D7",
+  },
+
+  dashText: {
+    color: "#434654",
+    fontSize: 14,
+    fontWeight: "semibold",
+  },
+
+  facultySignButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    marginTop: 12,
+  },
+
+  facultySignIcon: {
+    width: 18,
+    height: 18,
+    resizeMode: "contain",
+  },
+
+  facultySignText: {
+    color: "#0041C5",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+
+  passwordContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F1F5F9",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    borderRadius: 14,
+    paddingHorizontal: 14,
+  },
+  passwordIcon: { width: 20, height: 20, marginRight: 10 },
+  passwordInput: {
+    flex: 1,
+    paddingVertical: 14,
+    color: "#6B7280",
+    fontSize: 15,
+  },
+  eyeButton: { padding: 5 },
+  eyeIcon: { width: 20, height: 20 },
 });
