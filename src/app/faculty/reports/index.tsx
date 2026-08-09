@@ -1,4 +1,5 @@
 import * as Print from "expo-print";
+import * as Sharing from "expo-sharing";
 import { useEffect, useState } from "react";
 import {
   SafeAreaView,
@@ -17,7 +18,6 @@ import {
   buildSingleCsv,
   shareCsv,
 } from "../../../lib/csvExport";
-import { sharePdf } from "../../../lib/pdfShare";
 import { supabase } from "../../../lib/supabase";
 
 type Section = { id: string; name: string };
@@ -25,10 +25,8 @@ type SessionRow = {
   id: string;
   subject: string;
   created_at: string;
-  expires_at?: string | null;
   session_type?: string;
   event_name?: string | null;
-  faculty_id?: string | null;
 };
 type ExportFormat = "pdf" | "csv";
 
@@ -61,28 +59,13 @@ export default function Reports() {
 
   // Fetch sections for faculty/class reports
   useEffect(() => {
-    (async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // If faculty has assigned sections, only show those.
-      const [{ data: allSections }, { data: assignments }] = await Promise.all([
-        supabase.from("sections").select("id, name").order("name"),
-        supabase
-          .from("faculty_assignments")
-          .select("section_id")
-          .eq("faculty_id", user.id),
-      ]);
-
-      let filtered = allSections ?? [];
-      if (assignments && assignments.length > 0) {
-        const assignedIds = new Set(assignments.map((a) => a.section_id));
-        filtered = filtered.filter((s) => assignedIds.has(s.id));
-      }
-      setSections(filtered);
-    })();
+    supabase
+      .from("sections")
+      .select("id, name")
+      .order("name")
+      .then(({ data }) => {
+        if (data) setSections(data);
+      });
   }, []);
 
   // Fetch own sessions for student council (event sessions without sections)
@@ -108,9 +91,7 @@ export default function Reports() {
   const loadSessions = async () => {
     const { data } = await supabase
       .from("sessions")
-      .select(
-        "id, subject, created_at, expires_at, session_type, event_name, faculty_id",
-      )
+      .select("id, subject, created_at, session_type, event_name")
       .eq("section_id", selectedSectionId)
       .order("created_at", { ascending: false })
       .limit(50);
@@ -158,24 +139,11 @@ export default function Reports() {
         }))
         .sort((a: any, b: any) => a.name.localeCompare(b.name));
 
-      // Get faculty name for the report header
-      let facultyName = "Unknown Faculty";
-      if (session?.faculty_id) {
-        const { data: faculty } = await supabase
-          .from("profiles")
-          .select("full_name")
-          .eq("id", session.faculty_id)
-          .single();
-        facultyName = faculty?.full_name ?? facultyName;
-      }
-
       return {
         type: "single" as const,
         sectionName,
         subject: session?.subject ?? "Unknown Subject",
         sessionDate: session?.created_at ?? "",
-        sessionEndsAt: session?.expires_at ?? null,
-        facultyName,
         rows,
       };
     }
@@ -265,8 +233,6 @@ export default function Reports() {
                 sectionName: data.sectionName,
                 subject: data.subject,
                 sessionDate: data.sessionDate,
-                sessionEndsAt: data.sessionEndsAt,
-                facultyName: data.facultyName,
                 rows: data.rows,
               })
             : buildRangeReportHtml({
@@ -277,10 +243,7 @@ export default function Reports() {
                 rows: data.rows,
               });
         const { uri } = await Print.printToFileAsync({ html });
-        await sharePdf(
-          uri,
-          `attendance_${data.sectionName.replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}`,
-        );
+        if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri);
       }
 
       logAction("session_created", {
@@ -571,15 +534,11 @@ function buildSingleSessionHtml({
   sectionName,
   subject,
   sessionDate,
-  sessionEndsAt,
-  facultyName,
   rows,
 }: {
   sectionName: string;
   subject: string;
   sessionDate: string;
-  sessionEndsAt?: string | null;
-  facultyName?: string;
   rows: {
     name: string;
     schoolId: string;
@@ -596,17 +555,6 @@ function buildSingleSessionHtml({
   const presentCount = rows.filter((r) => r.status === "present").length;
   const lateCount = rows.filter((r) => r.status === "late").length;
   const absentCount = rows.filter((r) => r.status === "absent").length;
-  const totalCount = rows.length;
-
-  const startDate = new Date(sessionDate);
-  const endDate = sessionEndsAt ? new Date(sessionEndsAt) : null;
-
-  const dateStr = startDate.toLocaleDateString();
-  const startTimeStr = startDate.toLocaleTimeString();
-  const endTimeStr = endDate ? endDate.toLocaleTimeString() : "—";
-  const durationStr = endDate
-    ? Math.round((endDate.getTime() - startDate.getTime()) / 60000) + " min"
-    : "—";
 
   const rowsHtml = rows
     .map(
@@ -629,13 +577,9 @@ function buildSingleSessionHtml({
       <head><meta charset="utf-8" /><style>
         body { font-family: Helvetica, Arial, sans-serif; padding: 32px; color: #222; }
         h1 { font-size: 20px; margin-bottom: 4px; }
-        .meta { color: #666; font-size: 13px; margin-bottom: 24px; }
-        .meta-grid { display: flex; gap: 32px; margin-bottom: 16px; }
-        .meta-col { }
-        .meta-label { font-size: 10px; color: #999; text-transform: uppercase; letter-spacing: 0.5px; }
-        .meta-value { font-size: 13px; color: #444; font-weight: 600; margin-top: 2px; }
+        .meta { color: #666; font-size: 13px; margin-bottom: 16px; }
         .summary { display: flex; gap: 24px; margin-bottom: 24px; }
-        .summary-box { text-align: center; background: #f7f7f7; border-radius: 8px; padding: 12px 18px; }
+        .summary-box { text-align: center; }
         .summary-num { font-size: 22px; font-weight: bold; }
         .summary-label { font-size: 11px; color: #666; text-transform: uppercase; }
         table { width: 100%; border-collapse: collapse; }
@@ -644,38 +588,12 @@ function buildSingleSessionHtml({
       </style></head>
       <body>
         <h1>${subject} — ${sectionName}</h1>
-        <div class="meta">Attendance Report · ${dateStr}</div>
-
-        <div class="meta-grid">
-          <div class="meta-col">
-            <div class="meta-label">Date</div>
-            <div class="meta-value">${dateStr}</div>
-          </div>
-          <div class="meta-col">
-            <div class="meta-label">Start Time</div>
-            <div class="meta-value">${startTimeStr}</div>
-          </div>
-          <div class="meta-col">
-            <div class="meta-label">End Time</div>
-            <div class="meta-value">${endTimeStr}</div>
-          </div>
-          <div class="meta-col">
-            <div class="meta-label">Duration</div>
-            <div class="meta-value">${durationStr}</div>
-          </div>
-          <div class="meta-col">
-            <div class="meta-label">Faculty</div>
-            <div class="meta-value">${facultyName ?? "—"}</div>
-          </div>
-        </div>
-
+        <div class="meta">${new Date(sessionDate).toLocaleString()}</div>
         <div class="summary">
-          <div class="summary-box" style="background:#e8f5e9;"><div class="summary-num" style="color:#2e7d32;">${presentCount}</div><div class="summary-label">Present</div></div>
-          <div class="summary-box" style="background:#fff3e0;"><div class="summary-num" style="color:#e65100;">${lateCount}</div><div class="summary-label">Late</div></div>
-          <div class="summary-box" style="background:#ffebee;"><div class="summary-num" style="color:#c62828;">${absentCount}</div><div class="summary-label">Absent</div></div>
-          <div class="summary-box"><div class="summary-num" style="color:#555;">${totalCount}</div><div class="summary-label">Total</div></div>
+          <div class="summary-box"><div class="summary-num" style="color:#2e7d32;">${presentCount}</div><div class="summary-label">Present</div></div>
+          <div class="summary-box"><div class="summary-num" style="color:#e65100;">${lateCount}</div><div class="summary-label">Late</div></div>
+          <div class="summary-box"><div class="summary-num" style="color:#c62828;">${absentCount}</div><div class="summary-label">Absent</div></div>
         </div>
-
         <table>
           <thead><tr>
             <th>Student</th><th>School ID</th>

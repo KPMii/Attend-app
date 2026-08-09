@@ -1,4 +1,4 @@
-import { logoutAndRedirect } from "@/lib/navigation";
+import { logout } from "@/lib/auth";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
@@ -53,7 +53,8 @@ export default function AdminHome() {
   };
 
   const handleLogout = async () => {
-    await logoutAndRedirect();
+    await logout();
+    router.replace("/");
   };
 
   const menuItems = [
@@ -62,12 +63,6 @@ export default function AdminHome() {
       title: "Subjects",
       sub: "Manage the master subject list",
       route: "/admin/subjects",
-    },
-    {
-      emoji: "📋",
-      title: "Faculty Assignments",
-      sub: "Assign subjects & sections to faculty",
-      route: "/admin/faculty-assignments",
     },
     {
       emoji: "🏫",
@@ -151,11 +146,6 @@ export default function AdminHome() {
           ))}
         </View>
         <View style={styles.menu}>
-          <TouchableOpacity
-            onPress={() => router.push("/admin/settings" as any)}
-          >
-            <Text style={styles.settingsLink}>⚙️ Settings</Text>
-          </TouchableOpacity>
           <TouchableOpacity onPress={handleLogout}>
             <Text style={styles.logOutText}>Log Out</Text>
           </TouchableOpacity>
@@ -194,5 +184,4 @@ const styles = StyleSheet.create({
   menuSub: { color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 2 },
   chevron: { color: "rgba(255,255,255,0.3)", fontSize: 20 },
   logOutText: { color: "rgba(239, 68, 68, 1)", fontSize: 15 },
-  settingsLink: { color: "#C8F04D", fontSize: 15 },
 });

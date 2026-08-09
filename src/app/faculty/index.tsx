@@ -8,7 +8,7 @@ import {
   View,
 } from "react-native";
 import { useAuthStore } from "../../../stores/authStore";
-import { logoutAndRedirect } from "../../lib/navigation";
+import { logout } from "../../lib/auth";
 
 export default function FacultyHome() {
   const router = useRouter();
@@ -17,7 +17,8 @@ export default function FacultyHome() {
   const isStudentCouncil = role === "student_council_officer";
 
   const handleLogout = async () => {
-    await logoutAndRedirect();
+    await logout();
+    router.replace("/");
   };
 
   return (
@@ -28,23 +29,9 @@ export default function FacultyHome() {
           <Text style={styles.title}>
             {isStudentCouncil ? "Student Council" : "Faculty Home"}
           </Text>
-          <View style={styles.headerActions}>
-            <TouchableOpacity
-              style={styles.iconBtn}
-              onPress={() => router.push("/faculty/profile" as any)}
-            >
-              <Text style={styles.iconBtnText}>👤</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.iconBtn}
-              onPress={() => router.push("/faculty/settings" as any)}
-            >
-              <Text style={styles.iconBtnText}>⚙️</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-              <Text style={styles.logoutBtnText}>Logout</Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+            <Text style={styles.logoutBtnText}>Logout</Text>
+          </TouchableOpacity>
         </View>
 
         {hasPermission("sessions:create_event") && (
@@ -122,14 +109,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 16,
   },
-  headerActions: { flexDirection: "row", alignItems: "center", gap: 8 },
-  iconBtn: {
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  iconBtnText: { fontSize: 16 },
   title: {
     color: "#fff",
     fontSize: 28,

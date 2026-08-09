@@ -46,7 +46,6 @@ export default function FacultyProfile() {
       <Stack.Screen options={{ title: "My Profile" }} />
       <StatusBar barStyle="light-content" />
       <ScrollView contentContainerStyle={styles.scroll}>
-        {/* Profile header */}
         <View style={styles.avatarRow}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>
@@ -59,7 +58,6 @@ export default function FacultyProfile() {
           </View>
         </View>
 
-        {/* Assigned subjects */}
         <Text style={styles.sectionTitle}>My Subjects</Text>
         {loading ? (
           <Text style={styles.empty}>Loading...</Text>
@@ -78,7 +76,6 @@ export default function FacultyProfile() {
           </View>
         )}
 
-        {/* Assigned sections */}
         <Text style={styles.sectionTitle}>My Sections</Text>
         {loading ? (
           <Text style={styles.empty}>Loading...</Text>

@@ -22,9 +22,6 @@ export default function AdminSectionDetail() {
   const [roster, setRoster] = useState<Student[]>([]);
   const [searchId, setSearchId] = useState("");
   const [foundStudent, setFoundStudent] = useState<Student | null>(null);
-  const [foundStudentSections, setFoundStudentSections] = useState<string[]>(
-    [],
-  );
   const [searchError, setSearchError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -66,14 +63,13 @@ export default function AdminSectionDetail() {
   const searchStudent = async () => {
     setSearchError(null);
     setFoundStudent(null);
-    setFoundStudentSections([]);
     if (!searchId.trim()) return;
 
     const { data, error } = await supabase
       .from("profiles")
       .select("id, full_name, school_id_no")
       .eq("school_id_no", searchId.trim().toUpperCase())
-      .in("role", ["student", "student_council_officer"])
+      .eq("role", "student")
       .maybeSingle();
 
     if (error || !data) {
@@ -84,20 +80,7 @@ export default function AdminSectionDetail() {
       setSearchError("This student is already in the roster");
       return;
     }
-
-    // Fetch existing section memberships so the admin knows
-    // where else this student is already enrolled
-    const { data: enrollments } = await supabase
-      .from("section_enrollments")
-      .select("sections(name)")
-      .eq("student_id", data.id);
-
-    const otherSections: string[] = (enrollments ?? [])
-      .map((e: any) => e.sections?.name)
-      .filter(Boolean);
-
     setFoundStudent(data);
-    setFoundStudentSections(otherSections);
   };
 
   const addToRoster = async () => {
@@ -151,11 +134,6 @@ export default function AdminSectionDetail() {
             <View>
               <Text style={styles.foundName}>{foundStudent.full_name}</Text>
               <Text style={styles.foundId}>{foundStudent.school_id_no}</Text>
-              {foundStudentSections.length > 0 && (
-                <Text style={styles.foundOtherSections}>
-                  Also in: {foundStudentSections.join(", ")}
-                </Text>
-              )}
             </View>
             <TouchableOpacity style={styles.addBtn} onPress={addToRoster}>
               <Text style={styles.addBtnText}>Add to Roster</Text>
@@ -238,12 +216,6 @@ const styles = StyleSheet.create({
   },
   foundName: { color: "#fff", fontSize: 14, fontWeight: "600" },
   foundId: { color: "rgba(255,255,255,0.4)", fontSize: 12 },
-  foundOtherSections: {
-    color: "rgba(255,255,255,0.35)",
-    fontSize: 11,
-    marginTop: 4,
-    fontStyle: "italic",
-  },
   addBtn: {
     backgroundColor: "#C8F04D",
     borderRadius: 10,

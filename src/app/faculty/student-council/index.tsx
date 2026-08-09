@@ -8,7 +8,7 @@ import {
   View,
 } from "react-native";
 import { useAuthStore } from "../../../../stores/authStore";
-import { logoutAndRedirect } from "../../../lib/navigation";
+import { logout } from "../../../lib/auth";
 
 export default function StudentCouncilHome() {
   const router = useRouter();
@@ -16,7 +16,8 @@ export default function StudentCouncilHome() {
   const hasPermission = useAuthStore((s) => s.hasPermission);
 
   const handleLogout = async () => {
-    await logoutAndRedirect();
+    await logout();
+    router.replace("/");
   };
 
   return (
@@ -28,17 +29,9 @@ export default function StudentCouncilHome() {
             <Text style={styles.title}>Student Council</Text>
             <Text style={styles.subtitle}>{fullName}</Text>
           </View>
-          <View style={styles.headerActions}>
-            <TouchableOpacity
-              style={styles.iconBtn}
-              onPress={() => router.push("/faculty/settings" as any)}
-            >
-              <Text style={styles.iconBtnText}>⚙️</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-              <Text style={styles.logoutBtnText}>Logout</Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+            <Text style={styles.logoutBtnText}>Logout</Text>
+          </TouchableOpacity>
         </View>
 
         {hasPermission("sessions:create_event") && (
@@ -49,19 +42,6 @@ export default function StudentCouncilHome() {
             <Text style={styles.cardEmoji}>📱</Text>
             <Text style={styles.cardTitle}>Start Event Session</Text>
             <Text style={styles.cardSub}>Generate QR for an event</Text>
-          </TouchableOpacity>
-        )}
-
-        {hasPermission("attendance:scan") && (
-          <TouchableOpacity
-            style={styles.card}
-            onPress={() => router.push("/student/scanner/QRScanner")}
-          >
-            <Text style={styles.cardEmoji}>📷</Text>
-            <Text style={styles.cardTitle}>Scan QR Attendance</Text>
-            <Text style={styles.cardSub}>
-              Mark your attendance in classes &amp; events
-            </Text>
           </TouchableOpacity>
         )}
 
@@ -116,14 +96,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 8,
   },
-  headerActions: { flexDirection: "row", alignItems: "center", gap: 8 },
-  iconBtn: {
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  iconBtnText: { fontSize: 16 },
   title: {
     color: "#fff",
     fontSize: 28,

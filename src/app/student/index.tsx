@@ -3,7 +3,7 @@ import { router } from "expo-router";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "../../../stores/authStore";
-import { logoutAndRedirect } from "../../lib/navigation";
+import { logout } from "../../lib/auth";
 
 const QRLanding = () => {
   const [permission, reqPermission] = useCameraPermissions();
@@ -13,19 +13,12 @@ const QRLanding = () => {
   const isPermissionGranted = Boolean(permission?.granted);
 
   const handleLogout = async () => {
-    await logoutAndRedirect();
+    await logout();
+    router.replace("/");
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.topBar}>
-        <TouchableOpacity
-          style={styles.settingsBtn}
-          onPress={() => router.push("/student/settings" as any)}
-        >
-          <Text style={styles.settingsBtnText}>⚙️</Text>
-        </TouchableOpacity>
-      </View>
       <View style={styles.profileCard}>
         <Text style={styles.profileName}>{fullName ?? "Student"}</Text>
         <Text style={styles.profileId}>ID: {schoolIdNo ?? "—"}</Text>
@@ -61,18 +54,6 @@ const styles = StyleSheet.create({
     gap: 16,
     paddingHorizontal: 24,
   },
-  topBar: {
-    position: "absolute",
-    top: 12,
-    right: 20,
-  },
-  settingsBtn: {
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  settingsBtnText: { fontSize: 16 },
   profileCard: {
     backgroundColor: "rgba(255,255,255,0.05)",
     borderRadius: 16,

@@ -1,5 +1,5 @@
 ﻿import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Image,
   KeyboardAvoidingView,
@@ -13,21 +13,10 @@ import {
 } from "react-native";
 import { facultyLogin } from "../../lib/auth";
 import type { Role } from "../../lib/permissions";
-import {
-  checkRateLimit,
-  clearRateLimit,
-  recordAttempt,
-} from "../../lib/rateLimit";
 import { supabase } from "../../lib/supabase";
-import { useAuthStore } from "../../../stores/authStore";
 
 export default function FacultyLogin() {
   const router = useRouter();
-
-  // Clear any stale session from a previous user who quit without logging out
-  useEffect(() => {
-    useAuthStore.getState().logout();
-  }, []);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -39,22 +28,11 @@ export default function FacultyLogin() {
 
   const handleLogin = async () => {
     if (!canSubmit) return;
-
-    // Rate limit: max 5 attempts per minute per email
-    const rateKey = `faculty_login_${email.trim().toLowerCase()}`;
-    const { allowed, retryAfterMs } = await checkRateLimit(rateKey);
-    if (!allowed) {
-      const secs = Math.ceil(retryAfterMs / 1000);
-      setError(`Too many attempts. Try again in ${secs}s.`);
-      return;
-    }
-
     setLoading(true);
     setError(null);
 
     try {
       await facultyLogin(email.trim(), password);
-      await clearRateLimit(rateKey);
 
       const {
         data: { user },
@@ -75,7 +53,6 @@ export default function FacultyLogin() {
         router.replace("/faculty");
       }
     } catch (err) {
-      await recordAttempt(rateKey);
       setError("Invalid email or password. Please try again.");
     } finally {
       setLoading(false);
@@ -171,7 +148,7 @@ export default function FacultyLogin() {
             style={styles.facultySignButton}
             onPress={() => router.push("/student/login")}
           >
-            <Text style={styles.facultySignText}>Sign in as Student</Text>
+            <Text style={styles.facultySignText}>Sign in as Faculty</Text>
             <Image
               style={styles.facultySignIcon}
               source={require("../assets/icons/FacultyContact.png")}

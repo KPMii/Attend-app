@@ -130,20 +130,6 @@ export default function FacultyDetail() {
       <ScrollView contentContainerStyle={styles.scroll}>
         {error ? <Text style={styles.errorBanner}>{error}</Text> : null}
 
-        <TouchableOpacity
-          style={styles.assignmentsBtn}
-          onPress={() =>
-            router.push({
-              pathname: "/admin/faculty-assignments" as any,
-              params: { facultyId: id },
-            } as any)
-          }
-        >
-          <Text style={styles.assignmentsBtnText}>
-            📚 Manage Subjects & Sections
-          </Text>
-        </TouchableOpacity>
-
         <Text style={styles.sectionTitle}>Edit Profile</Text>
         <View style={styles.card}>
           <Text style={styles.label}>Full Name</Text>
@@ -246,20 +232,6 @@ const styles = StyleSheet.create({
     padding: 12,
     color: "#F2816B",
     fontSize: 13,
-  },
-  assignmentsBtn: {
-    backgroundColor: "rgba(200,240,77,0.12)",
-    borderWidth: 1,
-    borderColor: "rgba(200,240,77,0.3)",
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  assignmentsBtnText: {
-    color: "#C8F04D",
-    fontSize: 14,
-    fontWeight: "700",
   },
   sectionTitle: {
     color: "rgba(255,255,255,0.5)",
