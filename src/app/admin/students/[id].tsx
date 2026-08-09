@@ -45,10 +45,14 @@ export default function StudentDetail() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const [error, setError] = useState("");
+  const [studentSections, setStudentSections] = useState<
+    { id: string; name: string }[]
+  >([]);
 
   useEffect(() => {
     if (!id) return;
     loadProfile();
+    loadSections();
   }, [id]);
 
   useEffect(() => {
@@ -88,6 +92,19 @@ export default function StudentDetail() {
       recordId: id as string,
       description: `Changed ${fullName} role to ${newRole}`,
     });
+  };
+
+  const loadSections = async () => {
+    if (!id) return;
+    const { data } = await supabase
+      .from("section_enrollments")
+      .select("sections(id, name)")
+      .eq("student_id", id);
+
+    const names: { id: string; name: string }[] = (data ?? [])
+      .map((e: any) => e.sections)
+      .filter(Boolean);
+    setStudentSections(names);
   };
 
   const loadAttendance = async () => {
@@ -224,6 +241,19 @@ export default function StudentDetail() {
             </Text>
           </TouchableOpacity>
         </View>
+
+        {studentSections.length > 0 && (
+          <>
+            <Text style={styles.sectionTitle}>Sections</Text>
+            <View style={styles.sectionsRow}>
+              {studentSections.map((s) => (
+                <View key={s.id} style={styles.sectionChip}>
+                  <Text style={styles.sectionChipText}>{s.name}</Text>
+                </View>
+              ))}
+            </View>
+          </>
+        )}
 
         {currentRole === "student" && hasPermission("users:assign_role") && (
           <>
@@ -526,6 +556,16 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   confirmText: { color: "rgba(255,255,255,0.6)", fontSize: 13, lineHeight: 18 },
+  sectionsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 4 },
+  sectionChip: {
+    backgroundColor: "rgba(200,240,77,0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(200,240,77,0.2)",
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+  },
+  sectionChipText: { color: "#C8F04D", fontSize: 12, fontWeight: "600" },
   summaryRow: { flexDirection: "row", gap: 12 },
   summaryBox: {
     flex: 1,

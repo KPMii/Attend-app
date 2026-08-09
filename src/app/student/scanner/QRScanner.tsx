@@ -13,6 +13,7 @@ import {
 import { useAuthStore } from "../../../../stores/authStore";
 import { LazyCameraView } from "../../../components/lazyCamera";
 import { markSynced, saveAttendance } from "../../../lib/db";
+import { checkRateLimit, recordAttempt } from "../../../lib/rateLimit";
 
 import { supabase } from "../../../lib/supabase";
 
@@ -68,6 +69,20 @@ export default function QRScanner() {
     Vibration.vibrate(100);
 
     try {
+      // Rate limit: prevent spam scanning (max 3 scans in 30s)
+      const {
+        data: { user: rateUser },
+      } = await supabase.auth.getUser();
+      const rateKey = `qr_scan_${rateUser?.id ?? "anon"}`;
+      const { allowed, retryAfterMs } = await checkRateLimit(rateKey, {
+        maxAttempts: 3,
+        windowMs: 30 * 1000,
+      });
+      if (!allowed) {
+        const secs = Math.ceil(retryAfterMs / 1000);
+        throw new Error(`Slow down! Try again in ${secs}s.`);
+      }
+
       const session: SessionPayload = JSON.parse(data);
 
       // 1. Verify the QR hasn't been tampered with or forged
@@ -108,6 +123,7 @@ export default function QRScanner() {
 
       const isLate = checkIfLate(session);
       setStatus(isLate ? "late" : "present");
+      await recordAttempt(rateKey);
 
       const attendanceId = `att_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
       const scannedAt = new Date().toISOString();

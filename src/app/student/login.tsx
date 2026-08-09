@@ -1,5 +1,5 @@
 ﻿import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Image,
   KeyboardAvoidingView,
@@ -13,10 +13,20 @@ import {
 } from "react-native";
 import { useAuthStore } from "../../../stores/authStore";
 import { studentLogin } from "../../lib/auth";
+import {
+  checkRateLimit,
+  clearRateLimit,
+  recordAttempt,
+} from "../../lib/rateLimit";
 
 export default function StudentLogin() {
   const router = useRouter();
   const [schoolIdNo, setSchoolIdNo] = useState("");
+
+  // Clear any stale session from a previous user who quit without logging out
+  useEffect(() => {
+    useAuthStore.getState().logout();
+  }, []);
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -27,11 +37,22 @@ export default function StudentLogin() {
 
   const handleLogin = async () => {
     if (!canSubmit) return;
+
+    // Rate limit: max 5 attempts per minute per school ID
+    const rateKey = `student_login_${schoolIdNo.trim().toUpperCase()}`;
+    const { allowed, retryAfterMs } = await checkRateLimit(rateKey);
+    if (!allowed) {
+      const secs = Math.ceil(retryAfterMs / 1000);
+      setError(`Too many attempts. Try again in ${secs}s.`);
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
       await studentLogin(schoolIdNo.trim(), password);
+      await clearRateLimit(rateKey);
 
       // Wait for auth store to hydrate so we know the role
       await useAuthStore.getState().hydrate();
@@ -50,6 +71,7 @@ export default function StudentLogin() {
       }
     } catch (err) {
       console.log("LOGIN ERROR:", err);
+      await recordAttempt(rateKey);
       setError("Invalid School ID or password. Please try again.");
     } finally {
       setLoading(false);

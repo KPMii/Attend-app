@@ -1,19 +1,29 @@
 import * as Print from "expo-print";
-import * as Sharing from "expo-sharing";
 import { logAction } from "./audit";
+import { sharePdf } from "./pdfShare";
 import { supabase } from "./supabase";
 
 export async function generateSessionPdf(sessionId: string) {
   // Get the session's real details
   const { data: session, error: sessionError } = await supabase
     .from("sessions")
-    .select("id, subject, room, section_id, created_at, session_type, event_name")
+    .select(
+      "id, subject, room, section_id, created_at, expires_at, session_type, event_name, faculty_id, late_threshold_minutes",
+    )
     .eq("id", sessionId)
     .single();
 
   if (sessionError || !session) {
     throw new Error("Session not found");
   }
+
+  // Get faculty name for the PDF header
+  const { data: facultyProfile } = await supabase
+    .from("profiles")
+    .select("full_name")
+    .eq("id", session.faculty_id)
+    .single();
+  const facultyName = facultyProfile?.full_name ?? "Unknown Faculty";
 
   let rows: {
     name: string;
@@ -46,6 +56,8 @@ export async function generateSessionPdf(sessionId: string) {
       (attendance ?? []).map((a) => [a.student_id, { status: a.status, scannedAt: a.scanned_at }]),
     );
 
+    // Brain damage
+    
     rows = (roster ?? [])
       .map((student: any) => {
         const record = attendanceMap.get(student.student_id);
@@ -56,7 +68,7 @@ export async function generateSessionPdf(sessionId: string) {
           scannedAt: record?.scannedAt ?? null,
         };
       })
-      .sort((a: any, b: any) => a.name.localeCompare(b.name));
+      .sort((a, b) => a.name.localeCompare(b.name));
   } else {
     // Event session — no fixed roster, just show everyone who actually scanned
     const { data: attendance } = await supabase
@@ -65,13 +77,21 @@ export async function generateSessionPdf(sessionId: string) {
       .eq("session_id", sessionId);
 
     rows = (attendance ?? [])
-      .map((a: any) => ({
-        name: a.profiles?.full_name ?? "Unknown",
-        schoolId: a.profiles?.school_id_no ?? "—",
-        status: a.status,
-        scannedAt: a.scanned_at,
-      }))
-      .sort((a: any, b: any) => a.name.localeCompare(b.name));
+      .map(
+        (a: {
+          status: string;
+          scanned_at: string | null;
+          profiles?: Array<{ full_name?: string | null; school_id_no?: string | null }> | null;
+        }) => ({
+          name: a.profiles?.[0]?.full_name ?? "Unknown",
+          schoolId: a.profiles?.[0]?.school_id_no ?? "—",
+          status: a.status,
+          scannedAt: a.scanned_at,
+        }),
+      )
+      .sort((a: { name: string }, b: { name: string }) =>
+        a.name.localeCompare(b.name),
+      );
   }
 
   const title = session.session_type === "event" ? session.event_name : session.subject;
@@ -81,6 +101,9 @@ export async function generateSessionPdf(sessionId: string) {
     title: title ?? "Untitled",
     subtitle: subtitle ?? "—",
     sessionDate: session.created_at,
+    sessionEndsAt: session.expires_at,
+    facultyName,
+    lateThreshold: session.late_threshold_minutes,
     rows,
   });
 
@@ -92,20 +115,25 @@ export async function generateSessionPdf(sessionId: string) {
     description: `Generated PDF for session: ${title}`,
   });
 
-  if (await Sharing.isAvailableAsync()) {
-    await Sharing.shareAsync(uri);
-  }
+  const safeTitle = (title ?? "session").replace(/[^a-zA-Z0-9_-]/g, "_");
+  await sharePdf(uri, `attendance_${safeTitle}`);
 }
 
 function buildHtml({
   title,
   subtitle,
   sessionDate,
+  sessionEndsAt,
+  facultyName,
+  lateThreshold,
   rows,
 }: {
   title: string;
   subtitle: string;
   sessionDate: string;
+  sessionEndsAt: string | null;
+  facultyName: string;
+  lateThreshold: number | null;
   rows: { name: string; schoolId: string; status: string; scannedAt: string | null }[];
 }) {
   const statusColor: Record<string, string> = {
@@ -117,6 +145,17 @@ function buildHtml({
   const presentCount = rows.filter((r) => r.status === "present").length;
   const lateCount = rows.filter((r) => r.status === "late").length;
   const absentCount = rows.filter((r) => r.status === "absent").length;
+  const totalCount = rows.length;
+
+  const startDate = new Date(sessionDate);
+  const endDate = sessionEndsAt ? new Date(sessionEndsAt) : null;
+
+  const dateStr = startDate.toLocaleDateString();
+  const startTimeStr = startDate.toLocaleTimeString();
+  const endTimeStr = endDate ? endDate.toLocaleTimeString() : "—";
+  const durationStr = endDate
+    ? Math.round((endDate.getTime() - startDate.getTime()) / 60000) + " min"
+    : "—";
 
   const rowsHtml = rows
     .map(
@@ -139,23 +178,58 @@ function buildHtml({
       <head><meta charset="utf-8" /><style>
         body { font-family: Helvetica, Arial, sans-serif; padding: 32px; color: #222; }
         h1 { font-size: 20px; margin-bottom: 4px; }
-        .meta { color: #666; font-size: 13px; margin-bottom: 16px; }
+        .meta { color: #666; font-size: 13px; margin-bottom: 24px; }
+        .meta-grid { display: flex; gap: 32px; margin-bottom: 16px; }
+        .meta-col { }
+        .meta-label { font-size: 10px; color: #999; text-transform: uppercase; letter-spacing: 0.5px; }
+        .meta-value { font-size: 13px; color: #444; font-weight: 600; margin-top: 2px; }
         .summary { display: flex; gap: 24px; margin-bottom: 24px; }
-        .summary-box { text-align: center; }
+        .summary-box { text-align: center; background: #f7f7f7; border-radius: 8px; padding: 12px 18px; }
         .summary-num { font-size: 22px; font-weight: bold; }
         .summary-label { font-size: 11px; color: #666; text-transform: uppercase; }
         table { width: 100%; border-collapse: collapse; }
         th { text-align: left; background: #f5f5f5; padding: 8px; font-size: 12px; text-transform: uppercase; color: #666; }
         td { padding: 8px; border-bottom: 1px solid #eee; font-size: 13px; }
+        .td-absent { font-style: italic; color: #c62828; opacity: 0.85; }
       </style></head>
       <body>
         <h1>${title} — ${subtitle}</h1>
-        <div class="meta">${new Date(sessionDate).toLocaleString()}</div>
-        <div class="summary">
-          <div class="summary-box"><div class="summary-num" style="color:#2e7d32;">${presentCount}</div><div class="summary-label">Present</div></div>
-          <div class="summary-box"><div class="summary-num" style="color:#e65100;">${lateCount}</div><div class="summary-label">Late</div></div>
-          <div class="summary-box"><div class="summary-num" style="color:#c62828;">${absentCount}</div><div class="summary-label">Absent</div></div>
+        <div class="meta">Attendance Report · ${dateStr}</div>
+
+        <div class="meta-grid">
+          <div class="meta-col">
+            <div class="meta-label">Date</div>
+            <div class="meta-value">${dateStr}</div>
+          </div>
+          <div class="meta-col">
+            <div class="meta-label">Start Time</div>
+            <div class="meta-value">${startTimeStr}</div>
+          </div>
+          <div class="meta-col">
+            <div class="meta-label">End Time</div>
+            <div class="meta-value">${endTimeStr}</div>
+          </div>
+          <div class="meta-col">
+            <div class="meta-label">Duration</div>
+            <div class="meta-value">${durationStr}</div>
+          </div>
+          <div class="meta-col">
+            <div class="meta-label">Faculty</div>
+            <div class="meta-value">${facultyName}</div>
+          </div>
+          <div class="meta-col">
+            <div class="meta-label">Late Threshold</div>
+            <div class="meta-value">${lateThreshold ?? 10} min</div>
+          </div>
         </div>
+
+        <div class="summary">
+          <div class="summary-box" style="background:#e8f5e9;"><div class="summary-num" style="color:#2e7d32;">${presentCount}</div><div class="summary-label">Present</div></div>
+          <div class="summary-box" style="background:#fff3e0;"><div class="summary-num" style="color:#e65100;">${lateCount}</div><div class="summary-label">Late</div></div>
+          <div class="summary-box" style="background:#ffebee;"><div class="summary-num" style="color:#c62828;">${absentCount}</div><div class="summary-label">Absent</div></div>
+          <div class="summary-box"><div class="summary-num" style="color:#555;">${totalCount}</div><div class="summary-label">Total</div></div>
+        </div>
+
         <table>
           <thead><tr>
             <th>Student</th><th>School ID</th>

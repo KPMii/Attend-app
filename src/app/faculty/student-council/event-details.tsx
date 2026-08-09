@@ -1,7 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import * as Print from "expo-print";
 import { router, Stack, useLocalSearchParams } from "expo-router";
-import * as Sharing from "expo-sharing";
 import { useEffect, useState } from "react";
 import {
   SafeAreaView,
@@ -18,6 +17,7 @@ import {
   shareCsv,
   shareExcel,
 } from "../../../lib/csvExport";
+import { sharePdf } from "../../../lib/pdfShare";
 
 type Row = {
   id: string;
@@ -130,7 +130,7 @@ export default function EventDetails() {
   const handleExportPdf = async () => {
     const html = buildEventHtml(rows, eventInfo);
     const { uri } = await Print.printToFileAsync({ html });
-    if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri);
+    await sharePdf(uri, `event_attendance_${Date.now()}`);
   };
 
   const presentCount = rows.filter((r) => r.status === "present").length;
