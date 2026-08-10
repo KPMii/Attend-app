@@ -2,7 +2,7 @@ import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 /**
- * 🎥 LazyCameraView — wraps expo-camera's CameraView in a lazy-loading boundary.
+ * LazyCameraView — wraps expo-camera's CameraView in a lazy-loading boundary.
  * The CameraView + barcode scanning is one of the heaviest modules.
  * This component defers its import until the user actually navigates to the scanner.
  */

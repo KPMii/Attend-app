@@ -65,6 +65,12 @@ export default function AdminHome() {
       route: "/admin/subjects",
     },
     {
+      emoji: "📋",
+      title: "Faculty Assignments",
+      sub: "Assign subjects & sections to faculty",
+      route: "/admin/faculty-assignments",
+    },
+    {
       emoji: "🏫",
       title: "Sections",
       sub: "Manage sections, rooms, rosters",
