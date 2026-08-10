@@ -1,19 +1,19 @@
 ﻿import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import {
-    createAssignment,
-    deleteAssignment,
-    getFacultyAssignments,
-    type FacultyAssignment,
+  createAssignment,
+  deleteAssignment,
+  getFacultyAssignments,
+  type FacultyAssignment,
 } from "../../lib/facultyAssignments";
 import { supabase } from "../../lib/supabase";
 
