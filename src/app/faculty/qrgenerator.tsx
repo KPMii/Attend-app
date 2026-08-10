@@ -248,7 +248,7 @@ export default function QRGenerator() {
     if (!resume) return;
     supabase
       .from("sessions")
-      .select("subject, room, event_name, session_type")
+      .select("subject, room, event_name, session_type, section_id")
       .eq("id", resume)
       .single()
       .then(({ data }) => {
@@ -257,6 +257,7 @@ export default function QRGenerator() {
         if (data.session_type === "event") {
           setEventName(data.event_name || data.subject);
           setEventRoom(data.room);
+          setSelectedSectionId(data.section_id || null);
         }
       });
   }, [resume]);
@@ -285,7 +286,7 @@ export default function QRGenerator() {
         subject: eventName,
         subjectId: null,
         room: eventRoom,
-        sectionId: null,
+        sectionId: selectedSectionId,
         facultyId: user?.id ?? "unknown",
         token: t,
         createdAt,
@@ -461,7 +462,9 @@ export default function QRGenerator() {
   const activeTitle = sessionType === "event" ? eventName : selectedSubjectName;
   const activeMeta =
     sessionType === "event"
-      ? eventRoom
+      ? selectedSectionName
+        ? `${eventRoom} · Section: ${selectedSectionName}`
+        : eventRoom
       : `${selectedSectionName} · ${selectedRoomName}`;
 
   return (
@@ -486,22 +489,24 @@ export default function QRGenerator() {
         {!isActive ? (
           <View style={styles.form}>
             <View style={styles.typeToggleRow}>
-              <TouchableOpacity
-                style={[
-                  styles.typeToggle,
-                  sessionType === "class" && styles.typeToggleActive,
-                ]}
-                onPress={() => setSessionType("class")}
-              >
-                <Text
+              {!isStudentCouncil && (
+                <TouchableOpacity
                   style={[
-                    styles.typeToggleText,
-                    sessionType === "class" && styles.typeToggleTextActive,
+                    styles.typeToggle,
+                    sessionType === "class" && styles.typeToggleActive,
                   ]}
+                  onPress={() => setSessionType("class")}
                 >
-                  Class
-                </Text>
-              </TouchableOpacity>
+                  <Text
+                    style={[
+                      styles.typeToggleText,
+                      sessionType === "class" && styles.typeToggleTextActive,
+                    ]}
+                  >
+                    Class
+                  </Text>
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
                 style={[
                   styles.typeToggle,
@@ -520,7 +525,7 @@ export default function QRGenerator() {
               </TouchableOpacity>
             </View>
 
-            {sessionType === "class" ? (
+                {sessionType === "class" ? (
               <>
                 <View style={styles.subjectHeaderRow}>
                   <Text style={styles.label}>Subject</Text>
@@ -560,44 +565,6 @@ export default function QRGenerator() {
                     ))}
                   </View>
                 )}
-
-                <View style={styles.subjectHeaderRow}>
-                  <Text style={styles.label}>Section</Text>
-                </View>
-
-                {sections.length === 0 ? (
-                  <Text style={styles.noSubjectsText}>No sections yet...</Text>
-                ) : (
-                  <View style={styles.subjectChipRow}>
-                    {sections.map((s) => (
-                      <TouchableOpacity
-                        key={s.id}
-                        style={[
-                          styles.subjectChip,
-                          selectedSectionId === s.id &&
-                            styles.subjectChipActive,
-                        ]}
-                        onPress={() => setSelectedSectionId(s.id)}
-                      >
-                        <Text
-                          style={[
-                            styles.subjectChipText,
-                            selectedSectionId === s.id &&
-                              styles.subjectChipTextActive,
-                          ]}
-                        >
-                          {s.name}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
-
-                {selectedSection && (
-                  <Text style={styles.roomHint}>
-                    Room: {selectedRoomName || "—"}
-                  </Text>
-                )}
               </>
             ) : (
               <>
@@ -619,6 +586,49 @@ export default function QRGenerator() {
                   onChangeText={setEventRoom}
                 />
               </>
+            )}
+
+            <View style={styles.subjectHeaderRow}>
+              <Text style={styles.label}>
+                Section
+                {sessionType === "event" ? (
+                  <Text style={styles.optionalLabel}> (optional)</Text>
+                ) : null}
+              </Text>
+            </View>
+
+            {sections.length === 0 ? (
+              <Text style={styles.noSubjectsText}>No sections yet...</Text>
+            ) : (
+              <View style={styles.subjectChipRow}>
+                {sections.map((s) => (
+                  <TouchableOpacity
+                    key={s.id}
+                    style={[
+                      styles.subjectChip,
+                      selectedSectionId === s.id &&
+                        styles.subjectChipActive,
+                    ]}
+                    onPress={() => setSelectedSectionId(s.id)}
+                  >
+                    <Text
+                      style={[
+                        styles.subjectChipText,
+                        selectedSectionId === s.id &&
+                          styles.subjectChipTextActive,
+                      ]}
+                    >
+                      {s.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
+            {sessionType === "class" && selectedSection && (
+              <Text style={styles.roomHint}>
+                Room: {selectedRoomName || "—"}
+              </Text>
             )}
 
             <Text style={styles.label}>Session Duration (minutes)</Text>
@@ -811,6 +821,7 @@ const styles = StyleSheet.create({
   },
   subjectChipTextActive: { color: "#C8F04D" },
   roomHint: { color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 4 },
+  optionalLabel: { color: "rgba(255,255,255,0.3)", fontSize: 12 },
   eventHint: {
     color: "rgba(255,255,255,0.35)",
     fontSize: 12,

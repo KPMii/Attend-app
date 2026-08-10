@@ -28,10 +28,9 @@ export async function getFacultyAssignments(
     .eq("faculty_id", facultyId);
 
   if (error) {
-    // PGRST205 = table not found in schema cache (migration not applied yet)
     if (error.code === "PGRST205") {
       console.warn(
-        "[FacultyAssignments] Table not found ΓÇö migration may not be applied. Falling back to all subjects/sections.",
+        "[FacultyAssignments] Table not found, migration may not be applied. Falling back to all subjects/sections.",
       );
     } else {
       console.error("[FacultyAssignments] Fetch error:", error);

@@ -3,7 +3,7 @@ import { router } from "expo-router";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "../../../stores/authStore";
-import { logout } from "../../lib/auth";
+import { logoutAndRedirect } from "../../lib/navigation";
 
 const QRLanding = () => {
   const [permission, reqPermission] = useCameraPermissions();
@@ -13,8 +13,7 @@ const QRLanding = () => {
   const isPermissionGranted = Boolean(permission?.granted);
 
   const handleLogout = async () => {
-    await logout();
-    router.replace("/");
+    await logoutAndRedirect();
   };
 
   return (
@@ -36,6 +35,13 @@ const QRLanding = () => {
         >
           Scan QR
         </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.iconBtn}
+        onPress={() => router.push("/student/settings" as any)}
+      >
+        <Text style={styles.iconBtnText}>⚙️</Text>
       </TouchableOpacity>
 
       <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
@@ -70,6 +76,14 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     paddingVertical: 12,
   },
+  iconBtn: {
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginTop: 4,
+  },
+  iconBtnText: { fontSize: 16 },
   logoutBtn: {
     backgroundColor: "rgba(242,129,107,0.12)",
     borderWidth: 1,

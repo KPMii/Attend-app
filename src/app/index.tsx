@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useAuthStore } from "../../stores/authStore";
 
 export default function RoleSelect() {
   const router = useRouter();
@@ -29,14 +30,20 @@ export default function RoleSelect() {
 
         <TouchableOpacity
           style={[styles.card, styles.facultyCard]}
-          onPress={() => router.push("/student/login")}
+          onPress={async () => {
+            await useAuthStore.getState().logout();
+            router.push("/student/login");
+          }}
         >
           <Text style={styles.cardText}>Student</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.card, styles.studentCard]}
-          onPress={() => router.push("/faculty/login")}
+          onPress={async () => {
+            await useAuthStore.getState().logout();
+            router.push("/faculty/login");
+          }}
         >
           <Text style={styles.cardText}>Faculty</Text>
         </TouchableOpacity>
