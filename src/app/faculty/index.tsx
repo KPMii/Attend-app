@@ -1,4 +1,4 @@
-﻿import { useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import {
   SafeAreaView,
   StatusBar,
@@ -8,7 +8,6 @@ import {
   View,
 } from "react-native";
 import { useAuthStore } from "../../../stores/authStore";
-import { logoutAndRedirect } from "../../lib/navigation";
 
 export default function FacultyHome() {
   const router = useRouter();
@@ -16,60 +15,35 @@ export default function FacultyHome() {
   const role = useAuthStore((s) => s.role);
   const isStudentCouncil = role === "student_council_officer";
 
-  const handleLogout = async () => {
-    await logoutAndRedirect();
-  };
-
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
       <View style={styles.content}>
-        <View style={styles.headerRow}>
-          <Text style={styles.title}>
-            {isStudentCouncil ? "Student Council" : "Faculty Home"}
-          </Text>
-          <View style={styles.headerActions}>
-            <TouchableOpacity
-              style={styles.iconBtn}
-              onPress={() => router.push("/faculty/profile" as any)}
-            >
-              <Text style={styles.iconBtnText}>👤</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.iconBtn}
-              onPress={() => router.push("/faculty/settings" as any)}
-            >
-              <Text style={styles.iconBtnText}>⚙️</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-              <Text style={styles.logoutBtnText}>Logout</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+      <View style={styles.blueBox}>
+        <Text style={styles.title}>{isStudentCouncil ? "Student Council" : "Faculty Home"}</Text>
+      </View>
+        <Text>Quick Action</Text>
 
-        {hasPermission("sessions:create_event") && (
+        {(hasPermission("sessions:create_event") || hasPermission("sessions:create_class")) && (
           <TouchableOpacity
             style={styles.card}
             onPress={() => router.push("/faculty/qrgenerator")}
           >
             <Text style={styles.cardEmoji}>📱</Text>
-            <Text style={styles.cardTitle}>
-              {isStudentCouncil ? "New Event Session" : "Start Session"}
-            </Text>
-            <Text style={styles.cardSub}>Generate QR for attendance</Text>
+            <Text style={styles.cardTitle}>{isStudentCouncil ? "New Event Session" : "Start Session"}</Text>
+            <Text style={styles.cardSub}>Start Session</Text>
+            <Text style={styles.cardSub}>Create a new attendance session and Generate a QR Code</Text>
           </TouchableOpacity>
         )}
 
-        {!isStudentCouncil && (
-          <TouchableOpacity
-            style={styles.card}
-            onPress={() => router.push("/faculty/students")}
-          >
-            <Text style={styles.cardEmoji}>🎓</Text>
-            <Text style={styles.cardTitle}>Manage Students</Text>
-            <Text style={styles.cardSub}>Edit profiles, view attendance</Text>
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity
+          style={styles.card}
+          onPress={() => router.push("/faculty/students")}
+        >
+          <Text style={styles.cardEmoji}>🎓</Text>
+          <Text style={styles.cardTitle}>Manage Students</Text>
+          <Text style={styles.cardSub}>Edit profiles, view attendance</Text>
+        </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.card}
@@ -109,41 +83,21 @@ export default function FacultyHome() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0D0D0D" },
+  container: { flex: 1, backgroundColor: "#FDFFF5" },
+  blueBox: {color: "#305CDE", flex: 1},
   content: {
     flex: 1,
     justifyContent: "center",
     paddingHorizontal: 24,
     gap: 16,
   },
-  headerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  headerActions: { flexDirection: "row", alignItems: "center", gap: 8 },
-  iconBtn: {
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  iconBtnText: { fontSize: 16 },
   title: {
     color: "#fff",
     fontSize: 28,
     fontWeight: "800",
+    marginBottom: 16,
+    textAlign: "center",
   },
-  logoutBtn: {
-    backgroundColor: "rgba(242,129,107,0.12)",
-    borderWidth: 1,
-    borderColor: "rgba(242,129,107,0.3)",
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  logoutBtnText: { color: "#F2816B", fontSize: 13, fontWeight: "700" },
   card: {
     backgroundColor: "rgba(255,255,255,0.05)",
     borderWidth: 1,
