@@ -1,8 +1,8 @@
 import NetInfo from "@react-native-community/netinfo";
 import { Stack } from "expo-router";
 import { useEffect } from "react";
-import { syncPendingQueue } from "../lib/syncQueue";
 import { useAuthStore } from "../../stores/authStore";
+import { syncPendingQueue } from "../lib/syncQueue";
 
 export default function RootLayout() {
   useEffect(() => {

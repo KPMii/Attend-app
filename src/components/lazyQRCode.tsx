@@ -73,7 +73,7 @@ export function LazyQRCode({
   }
 
   if (!QRCodeModule) {
-    // 🔄 Loading state: show animated placeholder
+    //loading state show animated placeholder
     return (
       <View style={[styles.placeholder, { width: size, height: size }]}>
         <View style={styles.pulsingSquare} />
@@ -82,7 +82,7 @@ export function LazyQRCode({
     );
   }
 
-  // ✅ Render the real QR code
+  // render the real QR code
   return React.createElement(QRCodeModule, {
     value,
     size,

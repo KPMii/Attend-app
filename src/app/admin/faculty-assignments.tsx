@@ -23,6 +23,7 @@ type Section = { id: string; name: string; room: string | null };
 
 export default function ManageAssignments() {
   const router = useRouter();
+
   const params = useLocalSearchParams<{ facultyId?: string }>();
   const initialFacultyId = params.facultyId;
 

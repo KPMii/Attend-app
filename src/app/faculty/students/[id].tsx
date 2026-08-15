@@ -214,7 +214,12 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontStyle: "italic",
   },
-  sectionsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 4 },
+  sectionsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 4,
+  },
   sectionChip: {
     backgroundColor: "rgba(200,240,77,0.1)",
     borderWidth: 1,
