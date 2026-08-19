@@ -114,18 +114,6 @@ export default function StudentCouncilHome() {
           <View style={styles.listGroup}>
             <TouchableOpacity
               style={styles.listRow}
-              onPress={() => router.push("/faculty/profile")}
-            >
-              <Image
-                source={require("../../assets/icons/Profile.png")}
-                style={styles.listIcon}
-              />
-              <Text style={styles.listLabel}>My Profile</Text>
-              <Text style={styles.listChevron}>›</Text>
-            </TouchableOpacity>
-            <View style={styles.divider} />
-            <TouchableOpacity
-              style={styles.listRow}
               onPress={() => router.push("/faculty/settings")}
             >
               <Image
@@ -136,7 +124,7 @@ export default function StudentCouncilHome() {
               <Text style={styles.listChevron}>›</Text>
             </TouchableOpacity>
           </View>
-
+          <View style={styles.divider} />
           <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
             <Text style={styles.logoutText}>Log Out</Text>
           </TouchableOpacity>
@@ -322,8 +310,9 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: "#f0f0f0",
-    marginLeft: 100,
+    backgroundColor: "#00000070",
+    marginTop: 25,
+    width: 360,
   },
   logoutBtn: {
     backgroundColor: WHITE,

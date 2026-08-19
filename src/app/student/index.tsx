@@ -1,5 +1,4 @@
 import { supabase } from "@/lib/supabase";
-import { useCameraPermissions } from "expo-camera";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
@@ -16,10 +15,10 @@ import { logoutAndRedirect } from "../../lib/navigation";
 
 export default function StudentHome() {
   const [showName, setShowName] = useState("Guest");
-  const cameraPerms = useCameraPermissions();
 
   const router = useRouter();
   const role = useAuthStore((s) => s.role);
+  const schoolIdNo = useAuthStore((s) => s.schoolIdNo);
 
   const handleLogout = async () => {
     await logoutAndRedirect();
@@ -83,6 +82,8 @@ export default function StudentHome() {
           <View style={styles.greetingCard}>
             <Text style={styles.greetingText}>{getGreeting()}</Text>
             <Text style={styles.greetingName}>{showName}</Text>
+            <Text>Student ID:</Text>
+            <Text>{schoolIdNo}</Text>
             <Text style={styles.greetingDate}>{today}</Text>
           </View>
         </View>
@@ -99,19 +100,7 @@ export default function StudentHome() {
               attendance
             </Text>
           </TouchableOpacity>
-          //HERE NOT DONE
-          {cameraPerms && (
-            <View>
-              <Text style={styles.sectionLabel}>Camera Permission</Text>
-              <TouchableOpacity style={styles.startCard}>
-                <Text style={styles.startTitle}>Camera Access</Text>
-                <Text style={styles.startSub}>
-                  Required to start Attendance
-                </Text>
-                <Text style={styles.startSub}>Allow -›</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+
           <Text style={styles.sectionLabel}>Account</Text>
           <View style={styles.listGroup}>
             <TouchableOpacity
