@@ -525,7 +525,7 @@ export default function QRGenerator() {
               </TouchableOpacity>
             </View>
 
-                {sessionType === "class" ? (
+            {sessionType === "class" ? (
               <>
                 <View style={styles.subjectHeaderRow}>
                   <Text style={styles.label}>Subject</Text>
@@ -606,8 +606,7 @@ export default function QRGenerator() {
                     key={s.id}
                     style={[
                       styles.subjectChip,
-                      selectedSectionId === s.id &&
-                        styles.subjectChipActive,
+                      selectedSectionId === s.id && styles.subjectChipActive,
                     ]}
                     onPress={() => setSelectedSectionId(s.id)}
                   >
@@ -635,7 +634,7 @@ export default function QRGenerator() {
             <TextInput
               style={styles.input}
               placeholder="e.g. 60"
-              placeholderTextColor="rgba(255,255,255,0.25)"
+              placeholderTextColor="#000"
               value={duration}
               onChangeText={setDuration}
               keyboardType="numeric"
@@ -706,7 +705,7 @@ export default function QRGenerator() {
                     value={qrPayload}
                     size={width * 0.58}
                     color="#0D0D0D"
-                    backgroundColor="#FFFFFF"
+                    backgroundColor="#000"
                   />
                 ) : null}
               </View>
@@ -736,12 +735,17 @@ export default function QRGenerator() {
   );
 }
 
+const Black = "#000";
+const White = "#fff";
+const BackgroundColor = "#F0F3FF";
+const Blue = "#305CDE";
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0D0D0D" },
+  container: { flex: 1, backgroundColor: "#4d3ce9" },
   scroll: { paddingHorizontal: 24, paddingBottom: 48 },
   header: { paddingTop: 32, paddingBottom: 16, gap: 4 },
   headerTitle: {
-    color: "#fff",
+    color: "#000",
     fontSize: 30,
     fontWeight: "800",
     letterSpacing: -1,
@@ -770,15 +774,15 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
   },
-  typeToggleActive: { backgroundColor: "#C8F04D" },
+  typeToggleActive: { backgroundColor: Black },
   typeToggleText: {
-    color: "rgba(255,255,255,0.5)",
+    color: "Black",
     fontSize: 13,
     fontWeight: "700",
   },
-  typeToggleTextActive: { color: "#0D0D0D" },
+  typeToggleTextActive: { color: White },
   label: {
-    color: "rgba(255,255,255,0.5)",
+    color: Black,
     fontSize: 12,
     fontWeight: "600",
     letterSpacing: 0.5,
@@ -791,7 +795,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 12,
   },
-  manageLink: { color: "#C8F04D", fontSize: 12, fontWeight: "700" },
+  manageLink: { color: White, fontSize: 12, fontWeight: "700" },
   noSubjectsCard: {
     backgroundColor: "rgba(255,255,255,0.05)",
     borderWidth: 1,
@@ -800,7 +804,7 @@ const styles = StyleSheet.create({
     padding: 16,
     alignItems: "center",
   },
-  noSubjectsText: { color: "rgba(255,255,255,0.4)", fontSize: 13 },
+  noSubjectsText: { color: Black, fontSize: 13 },
   subjectChipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   subjectChip: {
     paddingVertical: 10,
@@ -811,19 +815,19 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.03)",
   },
   subjectChipActive: {
-    backgroundColor: "rgba(200,240,77,0.14)",
-    borderColor: "#C8F04D",
+    backgroundColor: BackgroundColor,
+    borderColor: Blue,
   },
   subjectChipText: {
-    color: "rgba(255,255,255,0.6)",
+    color: Black,
     fontSize: 13,
     fontWeight: "700",
   },
-  subjectChipTextActive: { color: "#C8F04D" },
+  subjectChipTextActive: { color: Black },
   roomHint: { color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 4 },
   optionalLabel: { color: "rgba(255,255,255,0.3)", fontSize: 12 },
   eventHint: {
-    color: "rgba(255,255,255,0.35)",
+    color: Black,
     fontSize: 12,
     marginTop: 4,
     fontStyle: "italic",
@@ -835,11 +839,11 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    color: "#fff",
+    color: Black,
     fontSize: 15,
   },
   startBtn: {
-    backgroundColor: "#C8F04D",
+    backgroundColor: Black,
     borderRadius: 16,
     paddingVertical: 16,
     alignItems: "center",
@@ -862,11 +866,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   lateCardTitle: {
-    color: "rgba(255,255,255,0.7)",
+    color: Black,
     fontSize: 13,
     fontWeight: "600",
   },
-  lateCardValue: { color: "#C8F04D", fontSize: 16, fontWeight: "800" },
+  lateCardValue: { color: Black, fontSize: 16, fontWeight: "800" },
   chipRow: { flexDirection: "row", gap: 8 },
   chip: {
     flex: 1,
@@ -878,11 +882,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   chipActive: {
-    backgroundColor: "rgba(200,240,77,0.14)",
-    borderColor: "#C8F04D",
+    backgroundColor: BackgroundColor,
+    borderColor: Blue,
   },
   chipText: { color: "rgba(255,255,255,0.5)", fontSize: 13, fontWeight: "700" },
-  chipTextActive: { color: "#C8F04D" },
+  chipTextActive: { color: Black },
   lateCardHint: {
     color: "rgba(255,255,255,0.3)",
     fontSize: 11,
@@ -896,7 +900,7 @@ const styles = StyleSheet.create({
     padding: 18,
     gap: 4,
   },
-  sessionSubject: { color: "#fff", fontSize: 18, fontWeight: "700" },
+  sessionSubject: { color: "#000", fontSize: 18, fontWeight: "700" },
   sessionRoom: { color: "rgba(255,255,255,0.45)", fontSize: 14 },
   sessionMeta: {
     flexDirection: "row",
@@ -912,12 +916,12 @@ const styles = StyleSheet.create({
     fontVariant: ["tabular-nums"],
   },
   qrCard: {
-    backgroundColor: "#fff",
+    backgroundColor: "#000",
     borderRadius: 24,
     padding: 20,
     alignItems: "center",
     gap: 14,
-    shadowColor: "#C8F04D",
+    shadowColor: "#fff",
     shadowOpacity: 0.15,
     shadowRadius: 30,
     shadowOffset: { width: 0, height: 0 },
