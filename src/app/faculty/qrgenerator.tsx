@@ -199,6 +199,10 @@ export default function QRGenerator() {
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(
     null,
   );
+
+  const [selectDropDownSubjects, setSelectDropDownSubjects] = useState(false);
+  const [selectDropDownSections, setSelectdropDownSections] = useState(false);
+
   const [eventRoom, setEventRoom] = useState("");
   const [duration, setDuration] = useState("60");
   const [isActive, setIsActive] = useState(false);
@@ -477,14 +481,18 @@ export default function QRGenerator() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>QR Generator</Text>
+          <Text style={styles.headerTitle}>Create Session</Text>
+          <View style={[styles.syncPill, { borderColor: syncColor + "55" }]}>
+            <Text style={[styles.syncText, { color: syncColor }]}>
+              {syncLabel}
+            </Text>
+          </View>
         </View>
 
-        <View style={[styles.syncPill, { borderColor: syncColor + "55" }]}>
-          <Text style={[styles.syncText, { color: syncColor }]}>
-            {syncLabel}
-          </Text>
-        </View>
+        <Text style={styles.InitialTitle}>Set up your session</Text>
+        <Text style={styles.InitialSub}>
+          Configure details before starting.
+        </Text>
 
         {!isActive ? (
           <View style={styles.form}>
@@ -524,7 +532,6 @@ export default function QRGenerator() {
                 </Text>
               </TouchableOpacity>
             </View>
-
             {sessionType === "class" ? (
               <>
                 <View style={styles.subjectHeaderRow}>
@@ -532,37 +539,53 @@ export default function QRGenerator() {
                 </View>
 
                 {subjects.length === 0 ? (
-                  <TouchableOpacity
-                    style={styles.noSubjectsCard}
-                    onPress={() => router.push("/admin/subjects")}
-                  >
-                    <Text style={styles.noSubjectsText}>
-                      No subjects yet...
-                    </Text>
-                  </TouchableOpacity>
+                  <Text style={styles.noSubjectsText}>No subjects yet...</Text>
                 ) : (
                   <View style={styles.subjectChipRow}>
-                    {subjects.map((s) => (
-                      <TouchableOpacity
-                        key={s.id}
-                        style={[
-                          styles.subjectChip,
-                          selectedSubjectId === s.id &&
-                            styles.subjectChipActive,
-                        ]}
-                        onPress={() => setSelectedSubjectId(s.id)}
+                    <TouchableOpacity
+                      style={[
+                        styles.selectBox,
+                        selectDropDownSubjects && styles.selectBoxOpen,
+                      ]}
+                      onPress={() =>
+                        setSelectDropDownSubjects(!selectDropDownSubjects)
+                      }
+                      activeOpacity={0.7}
+                    >
+                      <Text
+                        style={
+                          selectedSubjectId
+                            ? styles.selectBoxText
+                            : styles.selectBoxPlaceholder
+                        }
                       >
-                        <Text
-                          style={[
-                            styles.subjectChipText,
-                            selectedSubjectId === s.id &&
-                              styles.subjectChipTextActive,
-                          ]}
-                        >
-                          {s.name}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
+                        {subjects.find((s) => s.id === selectedSubjectId)
+                          ?.name ?? "Select Subject"}
+                      </Text>
+                      <Text style={styles.selectBoxCaret}>
+                        {selectDropDownSubjects ? "▲" : "▼"}
+                      </Text>
+                    </TouchableOpacity>
+
+                    {selectDropDownSubjects && (
+                      <View style={styles.subjectChipRow}>
+                        {subjects.map((s) => (
+                          <TouchableOpacity
+                            key={s.id}
+                            onPress={() => {
+                              setSelectedSubjectId(s.id);
+                              setSelectDropDownSubjects(false);
+                            }}
+                            style={[
+                              styles.chip,
+                              selectedSubjectId === s.id && styles.chipActive,
+                            ]}
+                          >
+                            <Text style={styles.chipText}>{s.name}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    )}
                   </View>
                 )}
               </>
@@ -572,7 +595,7 @@ export default function QRGenerator() {
                 <TextInput
                   style={styles.input}
                   placeholder="e.g. Foundation Day"
-                  placeholderTextColor="rgba(255,255,255,0.25)"
+                  placeholderTextColor="#777070"
                   value={eventName}
                   onChangeText={setEventName}
                 />
@@ -581,13 +604,12 @@ export default function QRGenerator() {
                 <TextInput
                   style={styles.input}
                   placeholder="e.g. Main Gymnasium"
-                  placeholderTextColor="rgba(255,255,255,0.25)"
+                  placeholderTextColor="#777070"
                   value={eventRoom}
                   onChangeText={setEventRoom}
                 />
               </>
             )}
-
             <View style={styles.subjectHeaderRow}>
               <Text style={styles.label}>
                 Section
@@ -596,87 +618,97 @@ export default function QRGenerator() {
                 ) : null}
               </Text>
             </View>
-
             {sections.length === 0 ? (
               <Text style={styles.noSubjectsText}>No sections yet...</Text>
             ) : (
               <View style={styles.subjectChipRow}>
-                {sections.map((s) => (
-                  <TouchableOpacity
-                    key={s.id}
-                    style={[
-                      styles.subjectChip,
-                      selectedSectionId === s.id && styles.subjectChipActive,
-                    ]}
-                    onPress={() => setSelectedSectionId(s.id)}
+                <TouchableOpacity
+                  style={[
+                    styles.selectBox,
+                    selectDropDownSections && styles.selectBoxOpen,
+                  ]}
+                  onPress={() =>
+                    setSelectdropDownSections(!selectDropDownSections)
+                  }
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={
+                      selectedSectionId
+                        ? styles.selectBoxText
+                        : styles.selectBoxPlaceholder
+                    }
                   >
-                    <Text
-                      style={[
-                        styles.subjectChipText,
-                        selectedSectionId === s.id &&
-                          styles.subjectChipTextActive,
-                      ]}
-                    >
-                      {s.name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                    {sections.find((s) => s.id === selectedSectionId)?.name ??
+                      "Select sections"}
+                  </Text>
+                  <Text style={styles.selectBoxCaret}>
+                    {selectDropDownSections ? "▲" : "▼"}
+                  </Text>
+                </TouchableOpacity>
+
+                {selectDropDownSections && (
+                  <View style={styles.subjectChipRow}>
+                    {sections.map((s) => (
+                      <TouchableOpacity
+                        key={s.id}
+                        onPress={() => {
+                          setSelectedSectionId(s.id);
+                          setSelectdropDownSections(false);
+                        }}
+                        style={[
+                          styles.chip,
+                          selectedSectionId === s.id && styles.chipActive,
+                        ]}
+                      >
+                        <Text style={styles.chipText}>{s.name}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
               </View>
             )}
-
             {sessionType === "class" && selectedSection && (
               <Text style={styles.roomHint}>
                 Room: {selectedRoomName || "—"}
               </Text>
             )}
+            <Text>Session Settings</Text>
+            <View style={styles.sessionSettings}>
+              <Text style={styles.label}> Duration</Text>
+              <TextInput
+                style={styles.inputDuration}
+                placeholder="30 minutes"
+                placeholderTextColor="#706c6c"
+                value={duration}
+                onChangeText={setDuration}
+                keyboardType="numeric"
+              />
 
-            <Text style={styles.label}>Session Duration (minutes)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g. 60"
-              placeholderTextColor="#000"
-              value={duration}
-              onChangeText={setDuration}
-              keyboardType="numeric"
-            />
+              <View style={styles.lateCard}>
+                <View style={styles.lateCardHeader}>
+                  <Text style={styles.label}>Late Threshold</Text>
+                  <Text style={styles.lateCardTitle}>
+                    Mark students late after
+                  </Text>
+                </View>
 
-            <Text style={styles.label}>Late Threshold</Text>
-            <View style={styles.lateCard}>
-              <View style={styles.lateCardHeader}>
-                <Text style={styles.lateCardTitle}>
-                  Mark students late after
-                </Text>
-                <Text style={styles.lateCardValue}>{lateThreshold} min</Text>
-              </View>
-
-              <View style={styles.chipRow}>
-                {[5, 10, 15, 20].map((mins) => (
-                  <TouchableOpacity
-                    key={mins}
-                    style={[
-                      styles.chip,
-                      lateThreshold === mins && styles.chipActive,
-                    ]}
-                    onPress={() => setLateThreshold(mins)}
-                  >
-                    <Text
+                <View style={styles.chipRow}>
+                  {[5, 10, 15, 20].map((mins) => (
+                    <TouchableOpacity
+                      key={mins}
                       style={[
-                        styles.chipText,
-                        lateThreshold === mins && styles.chipTextActive,
+                        styles.chip,
+                        lateThreshold === mins && styles.chipActive,
                       ]}
+                      onPress={() => setLateThreshold(mins)}
                     >
-                      {mins}m
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                      <Text style={styles.chipText}>{mins}m</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
               </View>
-
-              <Text style={styles.lateCardHint}>
-                Students scanning after this window will be marked late instead
-                of present.
-              </Text>
             </View>
-
             <TouchableOpacity
               style={[styles.startBtn, !canStart && styles.startBtnDisabled]}
               onPress={startSession}
@@ -705,7 +737,7 @@ export default function QRGenerator() {
                     value={qrPayload}
                     size={width * 0.58}
                     color="#0D0D0D"
-                    backgroundColor="#000"
+                    backgroundColor={White}
                   />
                 ) : null}
               </View>
@@ -736,21 +768,35 @@ export default function QRGenerator() {
 }
 
 const Black = "#000";
-const White = "#fff";
+const Gray = "#6B7280";
+const White = "#ffffff";
 const BackgroundColor = "#F0F3FF";
 const Blue = "#305CDE";
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#4d3ce9" },
+  container: { flex: 1, backgroundColor: BackgroundColor },
   scroll: { paddingHorizontal: 24, paddingBottom: 48 },
-  header: { paddingTop: 32, paddingBottom: 16, gap: 4 },
+  header: { paddingTop: 32, paddingBottom: 8, gap: 4 },
   headerTitle: {
-    color: "#000",
-    fontSize: 30,
-    fontWeight: "800",
+    color: Black,
+    fontSize: 20,
+    fontWeight: "bold",
     letterSpacing: -1,
   },
   headerSub: { color: "rgba(255,255,255,0.4)", fontSize: 14 },
+  InitialTitle: {
+    color: Black,
+    fontSize: 24,
+    fontWeight: "800",
+    letterSpacing: -1,
+  },
+  InitialSub: {
+    color: Gray,
+    fontSize: 14,
+    fontWeight: "medium",
+    letterSpacing: -1,
+    paddingBottom: 32,
+  },
   syncPill: {
     alignSelf: "flex-start",
     borderWidth: 1,
@@ -763,20 +809,20 @@ const styles = StyleSheet.create({
   form: { gap: 8 },
   typeToggleRow: {
     flexDirection: "row",
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderRadius: 14,
+    backgroundColor: "#F0F3FF",
+    borderRadius: 16,
     padding: 4,
     marginBottom: 8,
   },
   typeToggle: {
     flex: 1,
     paddingVertical: 10,
-    borderRadius: 10,
+    borderRadius: 16,
     alignItems: "center",
   },
-  typeToggleActive: { backgroundColor: Black },
+  typeToggleActive: { backgroundColor: Blue },
   typeToggleText: {
-    color: "Black",
+    color: "#6B7280",
     fontSize: 13,
     fontWeight: "700",
   },
@@ -806,24 +852,22 @@ const styles = StyleSheet.create({
   },
   noSubjectsText: { color: Black, fontSize: 13 },
   subjectChipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  subjectChip: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 12,
+  selectBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: White,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-    backgroundColor: "rgba(255,255,255,0.03)",
+    borderColor: "#E5E7EB",
+    borderRadius: 14,
+    paddingHorizontal: 120,
+    paddingVertical: 9,
+    marginTop: 6,
   },
-  subjectChipActive: {
-    backgroundColor: BackgroundColor,
-    borderColor: Blue,
-  },
-  subjectChipText: {
-    color: Black,
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  subjectChipTextActive: { color: Black },
+  selectBoxOpen: { borderColor: Blue },
+  selectBoxText: { color: Black, fontSize: 15, fontWeight: "600" },
+  selectBoxPlaceholder: { color: Gray, fontSize: 15, fontWeight: "600" },
+  selectBoxCaret: { color: Gray, fontSize: 12 },
   roomHint: { color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 4 },
   optionalLabel: { color: "rgba(255,255,255,0.3)", fontSize: 12 },
   eventHint: {
@@ -833,24 +877,36 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
   },
   input: {
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: White,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.1)",
     borderRadius: 14,
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 12,
+    marginTop: 8,
+    color: Black,
+    fontSize: 15,
+  },
+  inputDuration: {
+    backgroundColor: BackgroundColor,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginTop: 8,
     color: Black,
     fontSize: 15,
   },
   startBtn: {
-    backgroundColor: Black,
+    backgroundColor: Blue,
     borderRadius: 16,
     paddingVertical: 16,
     alignItems: "center",
     marginTop: 16,
   },
   startBtnDisabled: { opacity: 0.35 },
-  startBtnText: { color: "#0D0D0D", fontSize: 16, fontWeight: "800" },
+  startBtnText: { color: White, fontSize: 16, fontWeight: "800" },
   lateCard: {
     backgroundColor: "rgba(255,255,255,0.05)",
     borderWidth: 1,
@@ -861,8 +917,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   lateCardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+    textAlignVertical: "auto",
     alignItems: "center",
   },
   lateCardTitle: {
@@ -873,20 +928,24 @@ const styles = StyleSheet.create({
   lateCardValue: { color: Black, fontSize: 16, fontWeight: "800" },
   chipRow: { flexDirection: "row", gap: 8 },
   chip: {
-    flex: 1,
     paddingVertical: 10,
+    paddingHorizontal: 16,
+    minHeight: 42,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-    backgroundColor: "rgba(255,255,255,0.03)",
+    borderColor: "#E5E7EB",
+    backgroundColor: White,
     alignItems: "center",
   },
   chipActive: {
     backgroundColor: BackgroundColor,
     borderColor: Blue,
   },
-  chipText: { color: "rgba(255,255,255,0.5)", fontSize: 13, fontWeight: "700" },
-  chipTextActive: { color: Black },
+  chipText: {
+    color: Black,
+    fontSize: 13,
+    fontWeight: "700",
+  },
   lateCardHint: {
     color: "rgba(255,255,255,0.3)",
     fontSize: 11,
@@ -902,6 +961,15 @@ const styles = StyleSheet.create({
   },
   sessionSubject: { color: "#000", fontSize: 18, fontWeight: "700" },
   sessionRoom: { color: "rgba(255,255,255,0.45)", fontSize: 14 },
+  sessionSettings: {
+    backgroundColor: White,
+    borderRadius: 32,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    padding: 18,
+    marginTop: 8,
+    flex: 1,
+  },
   sessionMeta: {
     flexDirection: "row",
     alignItems: "center",
@@ -927,7 +995,11 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
   },
   qrInner: { borderRadius: 8, overflow: "hidden" },
-  qrHint: { color: "rgba(0,0,0,0.4)", fontSize: 12, textAlign: "center" },
+  qrHint: {
+    color: "rgba(255,255,255,0.6)",
+    fontSize: 12,
+    textAlign: "center",
+  },
   countdownRow: {
     flexDirection: "row",
     alignItems: "center",
