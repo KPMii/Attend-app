@@ -130,7 +130,7 @@ export default function ManageAssignments() {
   return (
     <SafeAreaView style={styles.container}>
       <Stack.Screen options={{ title: "Manage Assignments" }} />
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.title}>Faculty Assignments</Text>
         <Text style={styles.subtitle}>
@@ -139,7 +139,6 @@ export default function ManageAssignments() {
 
         {error && <Text style={styles.errorText}>{error}</Text>}
 
-        {/* Faculty picker */}
         <Text style={styles.label}>Faculty</Text>
         <View style={styles.chipRow}>
           {facultyList.map((f) => (
@@ -173,7 +172,6 @@ export default function ManageAssignments() {
 
         {selectedFacultyId && (
           <>
-            {/* Subject + Section pickers */}
             <Text style={styles.label}>Assign a Subject in a Section</Text>
 
             <Text style={styles.miniLabel}>Subject</Text>
@@ -242,7 +240,6 @@ export default function ManageAssignments() {
               </Text>
             </TouchableOpacity>
 
-            {/* Current assignments */}
             <Text style={styles.label}>
               Current Assignments ({assignments.length})
             </Text>
@@ -276,7 +273,7 @@ export default function ManageAssignments() {
         )}
 
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <Text style={styles.backBtnText}>ΓåÉ Back</Text>
+          <Text style={styles.backBtnText}>Back</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -284,31 +281,45 @@ export default function ManageAssignments() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0D0D0D" },
+  container: { flex: 1, backgroundColor: "#FBFBFF" },
   scroll: { padding: 24, gap: 8, paddingBottom: 48 },
-  title: { color: "#fff", fontSize: 26, fontWeight: "800" },
-  subtitle: { color: "rgba(255,255,255,0.4)", fontSize: 13, marginTop: 2 },
+  title: {
+    marginTop: 36,
+    color: "#17181C",
+    fontSize: 26,
+    fontWeight: "800",
+    fontFamily: "Inter_400Regular",
+  },
+  subtitle: {
+    color: "#85899B",
+    fontSize: 13,
+    marginTop: 2,
+    fontFamily: "Inter_400Regular",
+  },
   errorText: {
-    color: "#F2816B",
+    color: "#C85D4D",
     fontSize: 12,
-    backgroundColor: "rgba(242,129,107,0.1)",
+    backgroundColor: "#FCEBE8",
     borderRadius: 10,
     padding: 10,
     marginTop: 8,
+    fontFamily: "Inter_400Regular",
   },
   label: {
-    color: "rgba(255,255,255,0.5)",
+    color: "#85899B",
     fontSize: 12,
     fontWeight: "700",
     letterSpacing: 0.5,
     textTransform: "uppercase",
     marginTop: 24,
+    fontFamily: "Inter_400Regular",
   },
   miniLabel: {
-    color: "rgba(255,255,255,0.4)",
+    color: "#9A9DA6",
     fontSize: 11,
     fontWeight: "600",
     marginTop: 12,
+    fontFamily: "Inter_400Regular",
   },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 6 },
   chip: {
@@ -316,41 +327,76 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-    backgroundColor: "rgba(255,255,255,0.03)",
+    borderColor: "#ECECE7",
+    backgroundColor: "#FFFFFF",
   },
   chipActive: {
-    backgroundColor: "rgba(200,240,77,0.14)",
-    borderColor: "#C8F04D",
+    backgroundColor: "#F0F3FF",
+    borderColor: "#305CDE",
   },
-  chipText: { color: "rgba(255,255,255,0.6)", fontSize: 13, fontWeight: "600" },
-  chipTextActive: { color: "#C8F04D" },
-  hint: { color: "rgba(255,255,255,0.3)", fontSize: 13 },
+  chipText: {
+    color: "#85899B",
+    fontSize: 13,
+    fontWeight: "600",
+    fontFamily: "Inter_400Regular",
+  },
+  chipTextActive: {
+    color: "#305CDE",
+    fontFamily: "Inter_400Regular",
+  },
+  hint: {
+    color: "#9A9DA6",
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+  },
   addBtn: {
-    backgroundColor: "#C8F04D",
+    backgroundColor: "#305CDE",
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: "center",
     marginTop: 16,
   },
   addBtnDisabled: { opacity: 0.35 },
-  addBtnText: { color: "#0D0D0D", fontSize: 15, fontWeight: "800" },
+  addBtnText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "800",
+    fontFamily: "Inter_400Regular",
+  },
   assignmentList: { gap: 8, marginTop: 6 },
   assignmentRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.04)",
+    backgroundColor: "#FFFFFF",
     borderRadius: 12,
     padding: 14,
+    borderWidth: 1,
+    borderColor: "#ECECE7",
   },
-  assignmentSubject: { color: "#fff", fontSize: 14, fontWeight: "600" },
+  assignmentSubject: {
+    color: "#17181C",
+    fontSize: 14,
+    fontWeight: "600",
+    fontFamily: "Inter_400Regular",
+  },
   assignmentSection: {
-    color: "rgba(255,255,255,0.4)",
+    color: "#85899B",
     fontSize: 12,
     marginTop: 2,
+    fontFamily: "Inter_400Regular",
   },
-  removeText: { color: "#F2816B", fontSize: 13, fontWeight: "600" },
+  removeText: {
+    color: "#C85D4D",
+    fontSize: 13,
+    fontWeight: "600",
+    fontFamily: "Inter_400Regular",
+  },
   backBtn: { marginTop: 32, alignSelf: "flex-start" },
-  backBtnText: { color: "#C8F04D", fontSize: 14, fontWeight: "600" },
+  backBtnText: {
+    color: "#305CDE",
+    fontSize: 14,
+    fontWeight: "600",
+    fontFamily: "Inter_400Regular",
+  },
 });

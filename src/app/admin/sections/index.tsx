@@ -107,7 +107,7 @@ export default function AdminSections() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <View style={styles.header}>
         <Text style={styles.title}>Sections</Text>
       </View>
@@ -117,15 +117,15 @@ export default function AdminSections() {
       <View style={styles.form}>
         <TextInput
           style={styles.input}
-          placeholder="Section name e.g. Grade 10-A"
-          placeholderTextColor="rgba(255,255,255,0.25)"
+          placeholder="Grade 10-A"
+          placeholderTextColor="rgba(107, 85, 85, 0.25)"
           value={newName}
           onChangeText={setNewName}
         />
         <TextInput
           style={styles.input}
-          placeholder="Room e.g. Room 204"
-          placeholderTextColor="rgba(255,255,255,0.25)"
+          placeholder="Room 204"
+          placeholderTextColor="rgba(107, 85, 85, 0.25)"
           value={newRoom}
           onChangeText={setNewRoom}
         />
@@ -187,47 +187,80 @@ export default function AdminSections() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0D0D0D" },
-  header: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 12 },
-  title: { color: "#fff", fontSize: 26, fontWeight: "800" },
+  container: { flex: 1, backgroundColor: "#FBFBFF" },
+  header: {
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 12,
+    marginTop: 36,
+  },
+  title: {
+    color: "#17181C",
+    fontSize: 26,
+    fontWeight: "800",
+    fontFamily: "Inter_400Regular",
+  },
   errorText: {
-    color: "#F2816B",
+    color: "#C85D4D",
     fontSize: 13,
     paddingHorizontal: 24,
     marginBottom: 8,
+    fontFamily: "Inter_400Regular",
   },
   form: { paddingHorizontal: 24, gap: 8, marginBottom: 16 },
   input: {
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: "#ECECE7",
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    color: "#fff",
+    color: "#17181C",
     fontSize: 14,
+    fontFamily: "Inter_400Regular",
   },
   addBtn: {
-    backgroundColor: "#C8F04D",
+    backgroundColor: "#305CDE",
     borderRadius: 14,
     paddingVertical: 12,
     alignItems: "center",
   },
-  addBtnText: { color: "#0D0D0D", fontWeight: "800" },
+  addBtnText: {
+    color: "#FFFFFF",
+    fontWeight: "800",
+    fontFamily: "Inter_400Regular",
+  },
   list: { paddingHorizontal: 24, paddingBottom: 8 },
   row: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.04)",
+    backgroundColor: "#FFFFFF",
     borderRadius: 14,
     padding: 16,
     marginBottom: 8,
+    borderWidth: 1,
+    borderColor: "#ECECE7",
   },
-  sectionName: { color: "#fff", fontSize: 15, fontWeight: "600" },
-  roomText: { color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 2 },
-  chevron: { color: "rgba(255,255,255,0.3)", fontSize: 22 },
-  empty: { color: "rgba(255,255,255,0.3)", textAlign: "center", marginTop: 40 },
+  sectionName: {
+    color: "#17181C",
+    fontSize: 15,
+    fontWeight: "600",
+    fontFamily: "Inter_400Regular",
+  },
+  roomText: {
+    color: "#85899B",
+    fontSize: 12,
+    marginTop: 2,
+    fontFamily: "Inter_400Regular",
+  },
+  chevron: { color: "#B7B9C0", fontSize: 22 },
+  empty: {
+    color: "#9A9DA6",
+    textAlign: "center",
+    marginTop: 40,
+    fontFamily: "Inter_400Regular",
+  },
   pagerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -236,12 +269,21 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   pagerBtn: {
-    backgroundColor: "rgba(255,255,255,0.08)",
+    backgroundColor: "#F0F3FF",
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
-  pagerBtnDisabled: { opacity: 0.3 },
-  pagerBtnText: { color: "#fff", fontSize: 13, fontWeight: "600" },
-  pagerLabel: { color: "rgba(255,255,255,0.4)", fontSize: 12 },
+  pagerBtnDisabled: { opacity: 0.35 },
+  pagerBtnText: {
+    color: "#305CDE",
+    fontSize: 13,
+    fontWeight: "700",
+    fontFamily: "Inter_400Regular",
+  },
+  pagerLabel: {
+    color: "#85899B",
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+  },
 });

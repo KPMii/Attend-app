@@ -127,7 +127,7 @@ export default function StudentHome() {
   );
 }
 
-const BLUE = "#4361EE";
+const BLUE = "#305CDE";
 const WHITE = "#FFFFFF";
 const LIGHT_GRAY = "#F4F5FA";
 const DARK_GRAY = "#1a1a1a";

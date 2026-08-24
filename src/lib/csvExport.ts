@@ -19,12 +19,6 @@ function escapeHtml(val: string | number | null | undefined): string {
     .replace(/"/g, "&quot;");
 }
 
-export function buildRangeCsv(rows: { name: string; schoolId: string; present: number; late: number; absent: number; total: number }[]) {
-  const header = "Student Name,School ID,Present,Late,Absent,Attendance %";
-  const body = rows.map(r => `${escapeCsv(r.name)},${escapeCsv(r.schoolId)},${r.present},${r.late},${r.absent},${r.total > 0 ? Math.round(((r.present + r.late) / r.total) * 100) : 0}`).join("\n");
-  return `${header}\n${body}`;
-}
-
 export function buildSingleCsv(rows: { name: string; schoolId: string; status: string; scannedAt: string | null }[]) {
   const header = "Student Name,School ID,Status,Time Scanned";
   const body = rows.map(r => `${escapeCsv(r.name)},${escapeCsv(r.schoolId)},${r.status},${r.scannedAt ? new Date(r.scannedAt).toLocaleTimeString() : "—"}`).join("\n");

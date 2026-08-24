@@ -21,7 +21,7 @@ export default function StudentSettings() {
   return (
     <SafeAreaView style={styles.container}>
       <Stack.Screen options={{ title: "Settings" }} />
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FBFBFF" />
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.title}>Settings</Text>
 
@@ -46,10 +46,7 @@ export default function StudentSettings() {
         <Text style={styles.sectionTitle}>Security</Text>
         <ChangePasswordForm />
 
-        <TouchableOpacity
-          style={styles.logoutBtn}
-          onPress={logoutAndRedirect}
-        >
+        <TouchableOpacity style={styles.logoutBtn} onPress={logoutAndRedirect}>
           <Text style={styles.logoutBtnText}>Logout</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -58,46 +55,74 @@ export default function StudentSettings() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0D0D0D" },
+  container: { flex: 1, backgroundColor: "#FBFBFF" },
   scroll: { padding: 24, paddingBottom: 48, gap: 8 },
-  title: { color: "#fff", fontSize: 26, fontWeight: "800", marginBottom: 12 },
+  title: {
+    marginTop: 36,
+    color: "#17181C",
+    fontSize: 26,
+    fontWeight: "800",
+    marginBottom: 12,
+    fontFamily: "Inter_400Regular",
+  },
   card: {
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
-    backgroundColor: "rgba(255,255,255,0.04)",
+    backgroundColor: "#FFFFFF",
     borderRadius: 16,
     padding: 16,
+    borderWidth: 1,
+    borderColor: "#ECECE7",
   },
   avatar: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: "rgba(200,240,77,0.15)",
+    backgroundColor: "#F0F3FF",
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarText: { color: "#C8F04D", fontSize: 22, fontWeight: "800" },
+  avatarText: {
+    color: "#305CDE",
+    fontSize: 22,
+    fontWeight: "800",
+    fontFamily: "Inter_400Regular",
+  },
   infoRow: { flex: 1, gap: 2 },
-  name: { color: "#fff", fontSize: 17, fontWeight: "700" },
-  meta: { color: "rgba(255,255,255,0.4)", fontSize: 12, textTransform: "capitalize" },
+  name: {
+    color: "#17181C",
+    fontSize: 17,
+    fontWeight: "700",
+    fontFamily: "Inter_400Regular",
+  },
+  meta: {
+    color: "#85899B",
+    fontSize: 12,
+    textTransform: "capitalize",
+    fontFamily: "Inter_400Regular",
+  },
   sectionTitle: {
-    color: "rgba(255,255,255,0.5)",
+    color: "#85899B",
     fontSize: 12,
     fontWeight: "700",
     letterSpacing: 0.5,
     textTransform: "uppercase",
     marginTop: 18,
     marginBottom: 6,
+    fontFamily: "Inter_400Regular",
   },
   logoutBtn: {
     marginTop: 24,
-    backgroundColor: "rgba(242,129,107,0.12)",
-    borderWidth: 1,
-    borderColor: "rgba(242,129,107,0.3)",
+    backgroundColor: "#FFD8D4",
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: "center",
   },
-  logoutBtnText: { color: "#F2816B", fontSize: 14, fontWeight: "700" },
+  logoutBtnText: {
+    color: "#D90000",
+    fontSize: 14,
+    fontWeight: "700",
+    fontFamily: "Inter_400Regular",
+  },
 });

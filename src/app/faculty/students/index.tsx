@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   FlatList,
+  Image,
   SafeAreaView,
   StatusBar,
   StyleSheet,
@@ -18,6 +19,9 @@ type Student = {
   full_name: string;
   school_id_no: string | null;
 };
+
+const BLUE = "#305CDE";
+const FADED_BLUE = "#F0F3FF";
 
 export default function StudentManager() {
   const router = useRouter();
@@ -49,79 +53,226 @@ export default function StudentManager() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" />
-      <View style={styles.header}>
-        <Text style={styles.title}>Students</Text>
-        <Text style={styles.subtitle}>{students.length} total</Text>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+
+      <View style={styles.content}>
+        <View style={styles.titleRow}>
+          <Text style={styles.title}>Students</Text>
+
+          <View style={styles.countBadge}>
+            <Image />
+
+            <Text style={styles.countText}>
+              {students.length.toLocaleString()}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.searchContainer}>
+          <Image />
+
+          <TextInput
+            style={styles.search}
+            placeholder="Search by name or school ID"
+            placeholderTextColor="#B5B8C7"
+            value={search}
+            onChangeText={setSearch}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+        </View>
+
+        <FlatList
+          data={filtered}
+          keyExtractor={(item) => item.id}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.list}
+          refreshing={loading}
+          onRefresh={fetchStudents}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={styles.studentCard}
+              onPress={() => router.push(`/faculty/students/${item.id}`)}
+              activeOpacity={0.75}
+            >
+              <View style={styles.studentInfo}>
+                <Text style={styles.name}>{item.full_name || "(No name)"}</Text>
+
+                <Text style={styles.idText}>
+                  ID: {item.school_id_no || "—"}
+                </Text>
+              </View>
+
+              <Image />
+            </TouchableOpacity>
+          )}
+          ListEmptyComponent={
+            !loading ? (
+              <Text style={styles.empty}>No students found</Text>
+            ) : null
+          }
+        />
       </View>
-
-      <TextInput
-        style={styles.search}
-        placeholder="Search by name or School ID..."
-        placeholderTextColor="rgba(255,255,255,0.3)"
-        value={search}
-        onChangeText={setSearch}
-      />
-
-      <FlatList
-        data={filtered}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
-        refreshing={loading}
-        onRefresh={fetchStudents}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.row}
-            onPress={() => router.push(`/faculty/students/${item.id}`)}
-          >
-            <View>
-              <Text style={styles.name}>{item.full_name || "(No name)"}</Text>
-              <Text style={styles.idText}>ID: {item.school_id_no || "—"}</Text>
-            </View>
-            <Text style={styles.chevron}>›</Text>
-          </TouchableOpacity>
-        )}
-        ListEmptyComponent={
-          !loading ? <Text style={styles.empty}>No students found</Text> : null
-        }
-      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0D0D0D" },
-  header: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 12 },
-  title: { color: "#fff", fontSize: 26, fontWeight: "800" },
-  subtitle: { color: "rgba(255,255,255,0.4)", fontSize: 13, marginTop: 2 },
-  search: {
-    marginHorizontal: 24,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    color: "#fff",
-    fontSize: 14,
-    marginBottom: 12,
+  container: {
+    flex: 1,
+    backgroundColor: "#FBFBFF",
   },
-  list: { paddingHorizontal: 24, paddingBottom: 40 },
-  row: {
+
+  content: {
+    marginTop: 30,
+    flex: 1,
+    paddingHorizontal: 30,
+  },
+
+  titleRow: {
+    marginTop: 38,
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 8,
+    justifyContent: "space-between",
   },
-  name: { color: "#fff", fontSize: 15, fontWeight: "600" },
-  idText: { color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 2 },
-  chevron: { color: "rgba(255,255,255,0.3)", fontSize: 22 },
+
+  title: {
+    fontSize: 32,
+    fontWeight: "700",
+    color: "#111525",
+    fontFamily: "Inter_400Regular",
+  },
+
+  countBadge: {
+    height: 43,
+    paddingHorizontal: 17,
+    borderRadius: 23,
+    backgroundColor: "#E8EBFF",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+
+  countText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: BLUE,
+    fontFamily: "Inter_400Regular",
+  },
+
+  addButtonText: {
+    fontSize: 19,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    fontFamily: "Inter_400Regular",
+  },
+
+  searchContainer: {
+    height: 73,
+    marginTop: 24,
+    paddingHorizontal: 20,
+    borderRadius: 17,
+    backgroundColor: "#E8EBFF",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+
+  search: {
+    flex: 1,
+    height: "100%",
+    paddingHorizontal: 0,
+    color: "#171C2E",
+    fontSize: 17,
+    fontFamily: "Inter_400Regular",
+  },
+
+  list: {
+    paddingTop: 24,
+    paddingBottom: 35,
+  },
+
+  studentCard: {
+    minHeight: 116,
+    marginBottom: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    borderRadius: 18,
+    backgroundColor: "#FFFFFF",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderColor: "#F1F1F6",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.04,
+    shadowRadius: 5,
+    elevation: 1,
+  },
+
+  studentInfo: {
+    flex: 1,
+  },
+
+  name: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#111525",
+    fontFamily: "Inter_400Regular",
+  },
+
+  idText: {
+    marginTop: 8,
+    fontSize: 16,
+    color: "#737689",
+    fontFamily: "Inter_400Regular",
+  },
+
   empty: {
-    color: "rgba(255,255,255,0.3)",
-    textAlign: "center",
     marginTop: 40,
+    textAlign: "center",
+    color: "#A5A8B7",
+    fontSize: 15,
+    fontFamily: "Inter_400Regular",
+  },
+
+  bottomNav: {
+    height: 88,
+    paddingHorizontal: 15,
+    backgroundColor: "#FFFFFF",
+    borderTopWidth: 1,
+    borderTopColor: "#F0F1F6",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.03,
+    shadowRadius: 5,
+    elevation: 5,
+  },
+
+  navItem: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 3,
+  },
+
+  navText: {
+    fontSize: 14,
+    color: "#303143",
+    fontFamily: "Inter_400Regular",
+  },
+
+  activeNavText: {
+    color: BLUE,
   },
 });

@@ -7,16 +7,11 @@ import {
   StatusBar,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { logAction } from "../../../lib/audit";
-import {
-  buildRangeCsv,
-  buildSingleCsv,
-  shareCsv,
-} from "../../../lib/csvExport";
+import { buildSingleCsv, shareCsv } from "../../../lib/csvExport";
 import { supabase } from "../../../lib/supabase";
 
 type Section = { id: string; name: string };
@@ -29,13 +24,7 @@ export default function Reports() {
     null,
   );
 
-  const [reportMode, setReportMode] = useState<"range" | "single">("range");
   const [exportFormat, setExportFormat] = useState<ExportFormat>("pdf");
-
-  const [startDate, setStartDate] = useState(
-    new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10),
-  );
-  const [endDate, setEndDate] = useState(new Date().toISOString().slice(0, 10));
 
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(
@@ -56,9 +45,9 @@ export default function Reports() {
   }, []);
 
   useEffect(() => {
-    if (!selectedSectionId || reportMode !== "single") return;
+    if (!selectedSectionId) return;
     loadSessions();
-  }, [selectedSectionId, reportMode]);
+  }, [selectedSectionId]);
 
   const loadSessions = async () => {
     const { data } = await supabase
@@ -76,7 +65,7 @@ export default function Reports() {
       setError("Please select a section");
       return null;
     }
-    if (reportMode === "single" && !selectedSessionId) {
+    if (!selectedSessionId) {
       setError("Please select a session");
       return null;
     }
@@ -85,90 +74,33 @@ export default function Reports() {
       sections.find((s) => s.id === selectedSectionId)?.name ??
       "Unknown Section";
 
-    if (reportMode === "single") {
-      const session = sessions.find((s) => s.id === selectedSessionId);
-      const { data: roster } = await supabase.rpc("get_section_roster", {
-        p_section_id: selectedSectionId,
-      });
-      const { data: attendance } = await supabase
-        .from("attendance")
-        .select("student_id, status, scanned_at")
-        .eq("session_id", selectedSessionId);
-      const attendanceMap = new Map(
-        (attendance ?? []).map((a) => [
-          a.student_id,
-          { status: a.status, scannedAt: a.scanned_at },
-        ]),
-      );
-      const rows = (roster ?? [])
-        .map((student: any) => ({
-          name: student.full_name,
-          schoolId: student.school_id_no,
-          status: attendanceMap.get(student.student_id)?.status ?? "absent",
-          scannedAt: attendanceMap.get(student.student_id)?.scannedAt ?? null,
-        }))
-        .sort((a: any, b: any) => a.name.localeCompare(b.name));
-      return {
-        type: "single" as const,
-        sectionName,
-        subject: session?.subject ?? "Unknown Subject",
-        sessionDate: session?.created_at ?? "",
-        rows,
-      };
-    }
-
+    const session = sessions.find((s) => s.id === selectedSessionId);
     const { data: roster } = await supabase.rpc("get_section_roster", {
       p_section_id: selectedSectionId,
     });
-    const { data: rangeSessions } = await supabase
-      .from("sessions")
-      .select("id, subject, created_at")
-      .eq("section_id", selectedSectionId)
-      .gte("created_at", `${startDate}T00:00:00`)
-      .lte("created_at", `${endDate}T23:59:59`)
-      .order("created_at");
-    const sessionIds = (rangeSessions ?? []).map((s) => s.id);
-    const { data: attendance } =
-      sessionIds.length > 0
-        ? await supabase
-            .from("attendance")
-            .select("student_id, session_id, status")
-            .in("session_id", sessionIds)
-        : { data: [] };
-    const attendanceMap = new Map<string, Map<string, string>>();
-    (attendance ?? []).forEach((a) => {
-      if (!attendanceMap.has(a.student_id))
-        attendanceMap.set(a.student_id, new Map());
-      attendanceMap.get(a.student_id)!.set(a.session_id, a.status);
-    });
-    const summaryRows = (roster ?? []).map((student: any) => {
-      const studentAttendance =
-        attendanceMap.get(student.student_id) ?? new Map();
-      let present = 0,
-        late = 0,
-        absent = 0;
-      (rangeSessions ?? []).forEach((s) => {
-        const status = studentAttendance.get(s.id);
-        if (status === "present") present++;
-        else if (status === "late") late++;
-        else absent++;
-      });
-      return {
+    const { data: attendance } = await supabase
+      .from("attendance")
+      .select("student_id, status, scanned_at")
+      .eq("session_id", selectedSessionId);
+    const attendanceMap = new Map(
+      (attendance ?? []).map((a) => [
+        a.student_id,
+        { status: a.status, scannedAt: a.scanned_at },
+      ]),
+    );
+    const rows = (roster ?? [])
+      .map((student: any) => ({
         name: student.full_name,
         schoolId: student.school_id_no,
-        present,
-        late,
-        absent,
-        total: (rangeSessions ?? []).length,
-      };
-    });
+        status: attendanceMap.get(student.student_id)?.status ?? "absent",
+        scannedAt: attendanceMap.get(student.student_id)?.scannedAt ?? null,
+      }))
+      .sort((a: any, b: any) => a.name.localeCompare(b.name));
     return {
-      type: "range" as const,
       sectionName,
-      startDate,
-      endDate,
-      totalSessions: (rangeSessions ?? []).length,
-      rows: summaryRows,
+      subject: session?.subject ?? "Unknown Subject",
+      sessionDate: session?.created_at ?? "",
+      rows,
     };
   };
 
@@ -183,39 +115,24 @@ export default function Reports() {
       }
 
       if (exportFormat === "csv") {
-        const csv =
-          data.type === "single"
-            ? buildSingleCsv(data.rows)
-            : buildRangeCsv(data.rows);
+        const csv = buildSingleCsv(data.rows);
         await shareCsv(
           csv,
           `attendance_${data.sectionName.replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}`,
         );
       } else {
-        const html =
-          data.type === "single"
-            ? buildSingleSessionHtml({
-                sectionName: data.sectionName,
-                subject: data.subject,
-                sessionDate: data.sessionDate,
-                rows: data.rows,
-              })
-            : buildRangeReportHtml({
-                sectionName: data.sectionName,
-                startDate: data.startDate,
-                endDate: data.endDate,
-                totalSessions: data.totalSessions,
-                rows: data.rows,
-              });
+        const html = buildSingleSessionHtml({
+          sectionName: data.sectionName,
+          subject: data.subject,
+          sessionDate: data.sessionDate,
+          rows: data.rows,
+        });
         const { uri } = await Print.printToFileAsync({ html });
         if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri);
       }
 
       logAction("session_created", {
-        description:
-          reportMode === "single"
-            ? `Generated ${exportFormat.toUpperCase()} single-session report`
-            : `Generated ${exportFormat.toUpperCase()} range report (${startDate} to ${endDate})`,
+        description: `Generated ${exportFormat.toUpperCase()} single-session report`,
       });
     } catch (err) {
       console.error("Report generation error:", err);
@@ -227,44 +144,9 @@ export default function Reports() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.title}>Attendance Reports</Text>
-
-        <View style={styles.typeToggleRow}>
-          <TouchableOpacity
-            style={[
-              styles.typeToggle,
-              reportMode === "range" && styles.typeToggleActive,
-            ]}
-            onPress={() => setReportMode("range")}
-          >
-            <Text
-              style={[
-                styles.typeToggleText,
-                reportMode === "range" && styles.typeToggleTextActive,
-              ]}
-            >
-              Date Range Summary
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.typeToggle,
-              reportMode === "single" && styles.typeToggleActive,
-            ]}
-            onPress={() => setReportMode("single")}
-          >
-            <Text
-              style={[
-                styles.typeToggleText,
-                reportMode === "single" && styles.typeToggleTextActive,
-              ]}
-            >
-              Single Session
-            </Text>
-          </TouchableOpacity>
-        </View>
 
         <Text style={styles.label}>Section</Text>
         <View style={styles.chipRow}>
@@ -289,26 +171,7 @@ export default function Reports() {
           ))}
         </View>
 
-        {reportMode === "range" ? (
-          <>
-            <Text style={styles.label}>Start Date</Text>
-            <TextInput
-              style={styles.input}
-              value={startDate}
-              onChangeText={setStartDate}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor="rgba(255,255,255,0.25)"
-            />
-            <Text style={styles.label}>End Date</Text>
-            <TextInput
-              style={styles.input}
-              value={endDate}
-              onChangeText={setEndDate}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor="rgba(255,255,255,0.25)"
-            />
-          </>
-        ) : !selectedSectionId ? (
+        {!selectedSectionId ? (
           <Text style={styles.hint}>Select a section first</Text>
         ) : sessions.length === 0 ? (
           <Text style={styles.hint}>No sessions found for this section</Text>
@@ -325,7 +188,16 @@ export default function Reports() {
               >
                 <Text style={styles.sessionSubject}>{s.subject}</Text>
                 <Text style={styles.sessionDate}>
-                  {new Date(s.created_at).toLocaleString()}
+                  {new Date(s.created_at).toLocaleDateString([], {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}{" "}
+                  ·{" "}
+                  {new Date(s.created_at).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -384,70 +256,6 @@ export default function Reports() {
       </ScrollView>
     </SafeAreaView>
   );
-}
-
-function buildRangeReportHtml({
-  sectionName,
-  startDate,
-  endDate,
-  totalSessions,
-  rows,
-}: {
-  sectionName: string;
-  startDate: string;
-  endDate: string;
-  totalSessions: number;
-  rows: {
-    name: string;
-    schoolId: string;
-    present: number;
-    late: number;
-    absent: number;
-    total: number;
-  }[];
-}) {
-  const rowsHtml = rows
-    .map(
-      (r) => `
-    <tr>
-      <td>${r.name}</td>
-      <td>${r.schoolId}</td>
-      <td style="text-align:center; color:#2e7d32;">${r.present}</td>
-      <td style="text-align:center; color:#e65100;">${r.late}</td>
-      <td style="text-align:center; color:#c62828;">${r.absent}</td>
-      <td style="text-align:center; font-weight:bold;">${
-        r.total > 0 ? Math.round(((r.present + r.late) / r.total) * 100) : 0
-      }%</td>
-    </tr>`,
-    )
-    .join("");
-
-  return `
-    <html>
-      <head><meta charset="utf-8" /><style>
-        body { font-family: Helvetica, Arial, sans-serif; padding: 32px; color: #222; }
-        h1 { font-size: 20px; margin-bottom: 4px; }
-        .meta { color: #666; font-size: 13px; margin-bottom: 24px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 16px; }
-        th { text-align: left; background: #f5f5f5; padding: 8px; font-size: 12px; text-transform: uppercase; color: #666; }
-        td { padding: 8px; border-bottom: 1px solid #eee; font-size: 13px; }
-      </style></head>
-      <body>
-        <h1>Attendance Report — ${sectionName}</h1>
-        <div class="meta">Period: ${startDate} to ${endDate} · ${totalSessions} session(s) total</div>
-        <table>
-          <thead><tr>
-            <th>Student</th><th>School ID</th>
-            <th style="text-align:center;">Present</th>
-            <th style="text-align:center;">Late</th>
-            <th style="text-align:center;">Absent</th>
-            <th style="text-align:center;">Attendance %</th>
-          </tr></thead>
-          <tbody>${rowsHtml}</tbody>
-        </table>
-      </body>
-    </html>
-  `;
 }
 
 function buildSingleSessionHtml({
@@ -528,89 +336,100 @@ function buildSingleSessionHtml({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0D0D0D" },
+  container: { flex: 1, backgroundColor: "#FBFBFF" },
   scroll: { padding: 24, gap: 8, paddingBottom: 48 },
-  title: { color: "#fff", fontSize: 26, fontWeight: "800", marginBottom: 8 },
-  typeToggleRow: {
-    flexDirection: "row",
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderRadius: 14,
-    padding: 4,
+  title: {
+    color: "#17181C",
+    fontSize: 26,
+    fontWeight: "800",
     marginBottom: 8,
+    marginTop: 36,
+    fontFamily: "Inter_400Regular",
   },
-  typeToggle: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 10,
-    alignItems: "center",
-  },
-  typeToggleActive: { backgroundColor: "#C8F04D" },
-  typeToggleText: {
-    color: "rgba(255,255,255,0.5)",
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  typeToggleTextActive: { color: "#0D0D0D" },
   label: {
-    color: "rgba(255,255,255,0.5)",
+    color: "#85899B",
     fontSize: 12,
     fontWeight: "600",
     marginTop: 12,
     textTransform: "uppercase",
+    fontFamily: "Inter_400Regular",
   },
-  hint: { color: "rgba(255,255,255,0.3)", fontSize: 13, marginTop: 4 },
+  hint: {
+    color: "#9A9DA6",
+    fontSize: 13,
+    marginTop: 4,
+    fontFamily: "Inter_400Regular",
+  },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: {
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-    backgroundColor: "rgba(255,255,255,0.03)",
+    borderColor: "#ECECE7",
+    backgroundColor: "#FFFFFF",
   },
   chipActive: {
-    backgroundColor: "rgba(200,240,77,0.14)",
-    borderColor: "#C8F04D",
+    backgroundColor: "#F0F3FF",
+    borderColor: "#305CDE",
   },
-  chipText: { color: "rgba(255,255,255,0.6)", fontSize: 13, fontWeight: "700" },
-  chipTextActive: { color: "#C8F04D" },
-  input: {
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    color: "#fff",
-    fontSize: 15,
+  chipText: {
+    color: "#85899B",
+    fontSize: 13,
+    fontWeight: "700",
+    fontFamily: "Inter_400Regular",
+  },
+  chipTextActive: {
+    color: "#305CDE",
+    fontFamily: "Inter_400Regular",
   },
   sessionList: { gap: 6 },
   sessionRow: {
-    backgroundColor: "rgba(255,255,255,0.04)",
+    backgroundColor: "#FFFFFF",
     borderRadius: 12,
     padding: 14,
     borderWidth: 1,
-    borderColor: "transparent",
+    borderColor: "#ECECE7",
   },
   sessionRowActive: {
-    borderColor: "#C8F04D",
-    backgroundColor: "rgba(200,240,77,0.08)",
+    borderColor: "#305CDE",
+    backgroundColor: "#F0F3FF",
   },
-  sessionSubject: { color: "#fff", fontSize: 14, fontWeight: "700" },
-  sessionDate: { color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 2 },
-  errorText: { color: "#F2816B", fontSize: 13, marginTop: 12 },
+  sessionSubject: {
+    color: "#17181C",
+    fontSize: 14,
+    fontWeight: "700",
+    fontFamily: "Inter_400Regular",
+  },
+  sessionDate: {
+    color: "#85899B",
+    fontSize: 12,
+    marginTop: 2,
+    fontFamily: "Inter_400Regular",
+  },
+  errorText: {
+    color: "#C85D4D",
+    fontSize: 13,
+    marginTop: 12,
+    fontFamily: "Inter_400Regular",
+  },
   generateBtn: {
-    backgroundColor: "#C8F04D",
+    backgroundColor: "#305CDE",
     borderRadius: 16,
     paddingVertical: 16,
     alignItems: "center",
     marginTop: 24,
   },
   generateBtnDisabled: { opacity: 0.5 },
-  generateBtnText: { color: "#0D0D0D", fontSize: 16, fontWeight: "800" },
+  generateBtnText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "800",
+    fontFamily: "Inter_400Regular",
+  },
   formatToggleRow: {
     flexDirection: "row",
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: "#F0F1F6",
     borderRadius: 14,
     padding: 4,
     marginBottom: 8,
@@ -621,11 +440,15 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
   },
-  formatToggleActive: { backgroundColor: "#C8F04D" },
+  formatToggleActive: { backgroundColor: "#305CDE" },
   formatToggleText: {
-    color: "rgba(255,255,255,0.5)",
+    color: "#85899B",
     fontSize: 13,
     fontWeight: "700",
+    fontFamily: "Inter_400Regular",
   },
-  formatToggleTextActive: { color: "#0D0D0D" },
+  formatToggleTextActive: {
+    color: "#FFFFFF",
+    fontFamily: "Inter_400Regular",
+  },
 });

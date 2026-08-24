@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
@@ -22,10 +23,14 @@ type SessionRow = {
   event_name: string | null;
 };
 
+const BLUE = "#305CDE";
+const FADED_BLUE = "#F0F3FF";
+
 export default function FacultySessionHistory() {
   const router = useRouter();
   const role = useAuthStore((s) => s.role);
   const isStudentCouncil = role === "student_council_officer";
+
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
@@ -33,9 +38,11 @@ export default function FacultySessionHistory() {
 
   const fetchSessions = async () => {
     setLoading(true);
+
     const {
       data: { user },
     } = await supabase.auth.getUser();
+
     if (!user) return;
 
     const { from, to } = getRange(page);
@@ -50,6 +57,7 @@ export default function FacultySessionHistory() {
       .range(from, to);
 
     if (data) setSessions(data);
+
     setTotalCount(count ?? 0);
     setLoading(false);
   };
@@ -60,26 +68,37 @@ export default function FacultySessionHistory() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+
       <View style={styles.header}>
-        <Text style={styles.title}>Session History</Text>
-        <Text style={styles.subtitle}>{totalCount} total sessions</Text>
+        <View style={styles.headerTitleArea}>
+          <Text style={styles.title}>Session History</Text>
+          <Text style={styles.subtitle}>
+            View your previous attendance sessions
+          </Text>
+        </View>
+        <View style={styles.countBadge}>
+          <Ionicons name="calendar-outline" size={18} color={BLUE} />
+          <Text style={styles.countText}>{totalCount.toLocaleString()}</Text>
+        </View>
       </View>
 
       <FlatList
         data={sessions}
         keyExtractor={(item) => item.id}
+        showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.list}
         refreshing={loading}
         onRefresh={fetchSessions}
         renderItem={({ item }) => (
-          <View style={styles.row}>
+          <View style={styles.sessionCard}>
             <TouchableOpacity
               style={styles.rowLeft}
               onPress={() => router.push(`/faculty/sessions/${item.id}`)}
+              activeOpacity={0.75}
             >
               <View style={styles.rowHeader}>
-                <Text style={styles.subject}>
+                <Text style={styles.subject} numberOfLines={1}>
                   {item.session_type === "event"
                     ? item.event_name
                     : item.subject}
@@ -90,10 +109,25 @@ export default function FacultySessionHistory() {
                   </View>
                 )}
               </View>
-              <Text style={styles.meta}>
-                {item.room} · {new Date(item.created_at).toLocaleString()}
-              </Text>
+
+              <View style={styles.metaRow}>
+                <Text style={styles.meta}>{item.room}</Text>
+                <Text>-</Text>
+                <Text style={styles.meta}>
+                  {new Date(item.created_at).toLocaleDateString([], {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}{" "}
+                  ·{" "}
+                  {new Date(item.created_at).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </Text>
+              </View>
             </TouchableOpacity>
+
             {isStudentCouncil && item.session_type === "event" && (
               <TouchableOpacity
                 style={styles.resumeBtn}
@@ -103,41 +137,88 @@ export default function FacultySessionHistory() {
                     params: { resume: item.id },
                   })
                 }
+                activeOpacity={0.75}
               >
-                <Text style={styles.resumeBtnText}>↻ Resume</Text>
+                <Ionicons name="refresh-outline" size={17} color={BLUE} />
+
+                <Text style={styles.resumeBtnText}>Resume</Text>
               </TouchableOpacity>
             )}
-            <Text style={styles.chevron}>›</Text>
+            <TouchableOpacity
+              onPress={() => router.push(`/faculty/sessions/${item.id}`)}
+              style={styles.chevronButton}
+            >
+              <Ionicons name="chevron-forward" size={23} color="#C3C6D5" />
+            </TouchableOpacity>
           </View>
         )}
+
         ListEmptyComponent={
-          !loading ? <Text style={styles.empty}>No sessions yet</Text> : null
+          !loading ? (
+            <View style={styles.emptyContainer}>
+              <View style={styles.emptyIcon}>
+                <Ionicons name="calendar-outline" size={27} color="#AAB0C5" />
+              </View>
+
+              <Text style={styles.emptyTitle}>No sessions yet</Text>
+
+              <Text style={styles.emptyText}>
+                Your completed sessions will appear here.
+              </Text>
+            </View>
+          ) : null
         }
       />
 
-      <View style={styles.pagerRow}>
+      <View style={styles.pagination}>
         <TouchableOpacity
-          style={[styles.pagerBtn, page === 0 && styles.pagerBtnDisabled]}
+          style={[styles.pagerButton, page === 0 && styles.pagerButtonDisabled]}
           onPress={() => setPage((p) => Math.max(0, p - 1))}
           disabled={page === 0}
+          activeOpacity={0.75}
         >
-          <Text style={styles.pagerBtnText}>← Previous</Text>
+          <Ionicons
+            name="chevron-back"
+            size={17}
+            color={page === 0 ? "#AEB2C1" : BLUE}
+          />
+          <Text
+            style={[styles.pagerText, page === 0 && styles.pagerTextDisabled]}
+          >
+            Previous
+          </Text>
         </TouchableOpacity>
-        <Text style={styles.pagerLabel}>
-          {totalCount === 0
-            ? "0"
-            : `${page * PAGE_SIZE + 1}–${Math.min((page + 1) * PAGE_SIZE, totalCount)}`}{" "}
-          of {totalCount}
-        </Text>
+        <View style={styles.pageInfo}>
+          <Text style={styles.pageNumber}>
+            {totalCount === 0 ? "0" : `${page * PAGE_SIZE + 1}`}
+          </Text>
+
+          <Text style={styles.pageOf}> of {totalCount}</Text>
+        </View>
+
         <TouchableOpacity
           style={[
-            styles.pagerBtn,
-            (page + 1) * PAGE_SIZE >= totalCount && styles.pagerBtnDisabled,
+            styles.pagerButton,
+            (page + 1) * PAGE_SIZE >= totalCount && styles.pagerButtonDisabled,
           ]}
           onPress={() => setPage((p) => p + 1)}
           disabled={(page + 1) * PAGE_SIZE >= totalCount}
+          activeOpacity={0.75}
         >
-          <Text style={styles.pagerBtnText}>Next →</Text>
+          <Text
+            style={[
+              styles.pagerText,
+              (page + 1) * PAGE_SIZE >= totalCount && styles.pagerTextDisabled,
+            ]}
+          >
+            Next
+          </Text>
+
+          <Ionicons
+            name="chevron-forward"
+            size={17}
+            color={(page + 1) * PAGE_SIZE >= totalCount ? "#AEB2C1" : BLUE}
+          />
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -145,59 +226,252 @@ export default function FacultySessionHistory() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0D0D0D" },
-  header: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 12 },
-  title: { color: "#fff", fontSize: 26, fontWeight: "800" },
-  subtitle: { color: "rgba(255,255,255,0.4)", fontSize: 13, marginTop: 2 },
-  list: { paddingHorizontal: 24, paddingBottom: 8 },
-  row: {
+  container: {
+    flex: 1,
+    backgroundColor: "#FBFBFF",
+  },
+
+  header: {
+    paddingHorizontal: 30,
+    paddingTop: 30,
+    paddingBottom: 22,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F1F6",
+    marginTop: 35,
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 8,
-  },
-  rowLeft: { flex: 1 },
-  rowHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
-  subject: { color: "#fff", fontSize: 15, fontWeight: "600" },
-  eventBadge: {
-    backgroundColor: "rgba(200,240,77,0.15)",
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  eventBadgeText: { color: "#C8F04D", fontSize: 9, fontWeight: "800" },
-  meta: { color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 2 },
-  chevron: { color: "rgba(255,255,255,0.3)", fontSize: 22 },
-  empty: { color: "rgba(255,255,255,0.3)", textAlign: "center", marginTop: 40 },
-  pagerRow: {
-    flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 24,
-    paddingVertical: 12,
   },
-  pagerBtn: {
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderRadius: 10,
+
+  headerTitleArea: {
+    flex: 1,
+    paddingRight: 15,
+  },
+
+  title: {
+    color: "#000",
+    fontSize: 31,
+    fontWeight: "700",
+    fontFamily: "Inter_400Regular",
+  },
+
+  subtitle: {
+    marginTop: 5,
+    color: "#777B8C",
+    fontSize: 14,
+    lineHeight: 20,
+    fontFamily: "Inter_400Regular",
+  },
+
+  countBadge: {
+    minWidth: 76,
+    height: 43,
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    borderRadius: 24,
+    backgroundColor: FADED_BLUE,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
   },
-  pagerBtnDisabled: { opacity: 0.3 },
-  pagerBtnText: { color: "#fff", fontSize: 13, fontWeight: "600" },
-  pagerLabel: { color: "rgba(255,255,255,0.4)", fontSize: 12 },
+
+  countText: {
+    color: BLUE,
+    fontSize: 16,
+    fontWeight: "700",
+    fontFamily: "Inter_400Regular",
+  },
+
+  list: {
+    paddingHorizontal: 30,
+    paddingTop: 22,
+    paddingBottom: 20,
+    flexGrow: 1,
+  },
+
+  sessionCard: {
+    minHeight: 108,
+    marginBottom: 12,
+    paddingHorizontal: 21,
+    paddingVertical: 19,
+    borderRadius: 18,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#F0F1F6",
+    flexDirection: "row",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.035,
+    shadowRadius: 5,
+    elevation: 1,
+  },
+
+  rowLeft: {
+    flex: 1,
+    justifyContent: "center",
+  },
+
+  rowHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+    paddingRight: 5,
+  },
+
+  subject: {
+    flexShrink: 1,
+    color: "#111525",
+    fontSize: 19,
+    fontWeight: "700",
+    fontFamily: "Inter_400Regular",
+  },
+
+  eventBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 7,
+    backgroundColor: FADED_BLUE,
+  },
+
+  eventBadgeText: {
+    color: BLUE,
+    fontSize: 9,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+  },
+
+  /* ================= META ================= */
+
+  metaRow: {
+    marginTop: 9,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    flexWrap: "wrap",
+  },
+
+  meta: {
+    color: "#777B8C",
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+  },
+
   resumeBtn: {
-    backgroundColor: "rgba(200,240,77,0.15)",
+    height: 38,
+    marginLeft: 8,
+    marginRight: 5,
+    paddingHorizontal: 11,
     borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginRight: 8,
+    backgroundColor: FADED_BLUE,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
   },
+
   resumeBtnText: {
-    color: "#C8F04D",
+    color: BLUE,
     fontSize: 12,
     fontWeight: "700",
+    fontFamily: "Inter_400Regular",
+  },
+
+  chevronButton: {
+    width: 28,
+    height: 45,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  emptyContainer: {
+    flex: 1,
+    alignItems: "center",
+    paddingBottom: 70,
+  },
+
+  emptyIcon: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: FADED_BLUE,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+
+  emptyTitle: {
+    color: "#303447",
+    fontSize: 17,
+    fontWeight: "700",
+    fontFamily: "Inter_400Regular",
+  },
+
+  emptyText: {
+    marginTop: 5,
+    color: "#969AAA",
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+  },
+
+  pagination: {
+    minHeight: 72,
+    paddingHorizontal: 30,
+    paddingVertical: 12,
+    backgroundColor: "#fff",
+    borderTopWidth: 1,
+    borderTopColor: "#F0F1F6",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+
+  pagerButton: {
+    height: 40,
+    paddingHorizontal: 13,
+    borderRadius: 11,
+    backgroundColor: FADED_BLUE,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 3,
+  },
+
+  pagerButtonDisabled: {
+    backgroundColor: "#F5F5F8",
+  },
+
+  pagerText: {
+    color: BLUE,
+    fontSize: 13,
+    fontWeight: "700",
+    fontFamily: "Inter_400Regular",
+  },
+
+  pagerTextDisabled: {
+    color: "#AEB2C1",
+  },
+
+  pageInfo: {
+    flexDirection: "row",
+    alignItems: "baseline",
+  },
+
+  pageNumber: {
+    color: "#000",
+    fontSize: 13,
+    fontWeight: "700",
+    fontFamily: "Inter_400Regular",
+  },
+
+  pageOf: {
+    color: "#8D91A1",
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
   },
 });

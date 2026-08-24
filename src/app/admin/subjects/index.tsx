@@ -96,16 +96,25 @@ export default function AdminSubjects() {
   };
 
   const removeSubject = async (id: string) => {
-    await supabase.from("sessions").update({ subject_id: null }).eq("subject_id", id);
-    const { error: delError } = await supabase.from("subjects").delete().eq("id", id);
-    if (delError) { setError(delError.message); return; }
+    await supabase
+      .from("sessions")
+      .update({ subject_id: null })
+      .eq("subject_id", id);
+    const { error: delError } = await supabase
+      .from("subjects")
+      .delete()
+      .eq("id", id);
+    if (delError) {
+      setError(delError.message);
+      return;
+    }
     fetchSubjects();
     fetchSubjects();
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <View style={styles.header}>
         <Text style={styles.title}>Subjects</Text>
       </View>
@@ -116,7 +125,7 @@ export default function AdminSubjects() {
         <TextInput
           style={styles.input}
           placeholder="New subject e.g. Gen Math"
-          placeholderTextColor="rgba(255,255,255,0.25)"
+          placeholderTextColor="rgba(107, 85, 85, 0.25)"
           value={newName}
           onChangeText={setNewName}
         />
@@ -174,14 +183,25 @@ export default function AdminSubjects() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0D0D0D" },
-  header: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 12 },
-  title: { color: "#fff", fontSize: 26, fontWeight: "800" },
+  container: { flex: 1, backgroundColor: "#FBFBFF" },
+  header: {
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 12,
+    marginTop: 36,
+  },
+  title: {
+    color: "#17181C",
+    fontSize: 26,
+    fontWeight: "800",
+    fontFamily: "Inter_400Regular",
+  },
   errorText: {
-    color: "#F2816B",
+    color: "#C85D4D",
     fontSize: 13,
     paddingHorizontal: 24,
     marginBottom: 8,
+    fontFamily: "Inter_400Regular",
   },
   addRow: {
     flexDirection: "row",
@@ -191,35 +211,57 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: "#ECECE7",
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    color: "#fff",
+    color: "#17181C",
     fontSize: 14,
+    fontFamily: "Inter_400Regular",
   },
   addBtn: {
-    backgroundColor: "#C8F04D",
+    backgroundColor: "#305CDE",
     borderRadius: 14,
     paddingHorizontal: 20,
     justifyContent: "center",
   },
-  addBtnText: { color: "#0D0D0D", fontWeight: "800" },
+  addBtnText: {
+    color: "#FFFFFF",
+    fontWeight: "800",
+    fontFamily: "Inter_400Regular",
+  },
   list: { paddingHorizontal: 24, paddingBottom: 8 },
   row: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.04)",
+    backgroundColor: "#FFFFFF",
     borderRadius: 14,
     padding: 16,
     marginBottom: 8,
+    borderWidth: 1,
+    borderColor: "#ECECE7",
   },
-  subjectName: { color: "#fff", fontSize: 15, fontWeight: "600" },
-  removeText: { color: "#F2816B", fontSize: 13, fontWeight: "600" },
-  empty: { color: "rgba(255,255,255,0.3)", textAlign: "center", marginTop: 40 },
+  subjectName: {
+    color: "#17181C",
+    fontSize: 15,
+    fontWeight: "600",
+    fontFamily: "Inter_400Regular",
+  },
+  removeText: {
+    color: "#C85D4D",
+    fontSize: 13,
+    fontWeight: "600",
+    fontFamily: "Inter_400Regular",
+  },
+  empty: {
+    color: "#9A9DA6",
+    textAlign: "center",
+    marginTop: 40,
+    fontFamily: "Inter_400Regular",
+  },
   pagerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -228,12 +270,21 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   pagerBtn: {
-    backgroundColor: "rgba(255,255,255,0.08)",
+    backgroundColor: "#F0F3FF",
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
-  pagerBtnDisabled: { opacity: 0.3 },
-  pagerBtnText: { color: "#fff", fontSize: 13, fontWeight: "600" },
-  pagerLabel: { color: "rgba(255,255,255,0.4)", fontSize: 12 },
+  pagerBtnDisabled: { opacity: 0.35 },
+  pagerBtnText: {
+    color: "#305CDE",
+    fontSize: 13,
+    fontWeight: "700",
+    fontFamily: "Inter_400Regular",
+  },
+  pagerLabel: {
+    color: "#85899B",
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+  },
 });

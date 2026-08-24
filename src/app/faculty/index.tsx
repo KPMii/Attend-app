@@ -68,20 +68,12 @@ export default function FacultyHome() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.root}>
-        <StatusBar barStyle="light-content" backgroundColor="#4361EE" />
+        <StatusBar barStyle="light-content" backgroundColor="#305CDE" />
 
         <View style={styles.header}>
-          <View style={styles.logoBox}>
-            <Image
-              source={require("../assets/logo.png")}
-              style={styles.logoEmoji}
-            />
-          </View>
-
           <Text style={styles.headerTitle}>
             {isStudentCouncil ? "Student Council" : "Faculty Home"}
           </Text>
-
           <View style={styles.greetingCard}>
             <Text style={styles.greetingText}>{getGreeting()}</Text>
             <Text style={styles.greetingName}>{showName}</Text>
@@ -193,30 +185,12 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: BLUE,
     paddingHorizontal: 24,
+    paddingTop: 48,
   },
   bottomBox: {
     backgroundColor: BLUE,
     paddingHorizontal: 24,
     paddingBottom: 48,
-  },
-  logoBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: WHITE,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 8,
-    marginBottom: 12,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-  logoEmoji: {
-    width: 38,
-    height: 38,
   },
   headerTitle: {
     color: WHITE,

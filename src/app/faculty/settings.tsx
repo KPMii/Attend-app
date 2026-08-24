@@ -1,5 +1,6 @@
 import { Stack } from "expo-router";
 import {
+  Image,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -15,89 +16,197 @@ import { logoutAndRedirect } from "../../lib/navigation";
 
 export default function FacultySettings() {
   const fullName = useAuthStore((s) => s.fullName);
-  const role = useAuthStore((s) => s.role);
+  const role = useAuthStore((s) =>
+    s.role === "student_council_officer" ? "Student Council" : s.role,
+  );
   const schoolIdNo = useAuthStore((s) => s.schoolIdNo);
 
   return (
     <SafeAreaView style={styles.container}>
-      <Stack.Screen options={{ title: "Settings" }} />
-      <StatusBar barStyle="light-content" />
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.title}>Settings</Text>
+      <Stack.Screen options={{ headerShown: false }} />
 
-        <View style={styles.card}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {(fullName ?? "?").charAt(0).toUpperCase()}
-            </Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.name}>{fullName ?? "—"}</Text>
-            <Text style={styles.meta}>
-              Role: {(role ?? "—").replace(/_/g, " ")}
-            </Text>
-            {schoolIdNo && <Text style={styles.meta}>ID: {schoolIdNo}</Text>}
+      <StatusBar barStyle="dark-content" backgroundColor="#FBFBFF" />
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scroll}
+      >
+        <View style={styles.header}>
+          <View style={styles.logoContainer}>
+            <View style={styles.logoIconContainer}>
+              <Image
+                source={require("../assets/logo.png")}
+                style={styles.logo}
+              />
+            </View>
           </View>
         </View>
 
-        <Text style={styles.sectionTitle}>Profile</Text>
-        <EditDisplayName />
+        <View style={styles.titlePill}>
+          <Text style={styles.titleName}>{fullName}</Text>
+          <Text style={styles.titleRole}>Role: {role}</Text>
+        </View>
 
-        <Text style={styles.sectionTitle}>Security</Text>
-        <ChangePasswordForm />
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionHeader}>
+            <Image />
 
-        <TouchableOpacity
-          style={styles.logoutBtn}
-          onPress={logoutAndRedirect}
-        >
-          <Text style={styles.logoutBtnText}>Logout</Text>
-        </TouchableOpacity>
+            <View></View>
+            <Text style={styles.sectionHeading}>Profile</Text>
+          </View>
+
+          <Text style={styles.fieldLabel}>Display Name</Text>
+          <EditDisplayName />
+        </View>
+
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionHeader}>
+            <Image />
+
+            <Text style={styles.sectionHeading}>Security</Text>
+          </View>
+          <ChangePasswordForm />
+        </View>
+        <View style={styles.hiddenInfo}>
+          <Text>{fullName ?? "Faculty user"}</Text>
+          <Text>{role ?? "faculty"}</Text>
+          {schoolIdNo && <Text>{schoolIdNo}</Text>}
+        </View>
+
+        <View style={styles.logoutContainer}>
+          <TouchableOpacity
+            style={styles.logoutButton}
+            activeOpacity={0.75}
+            onPress={logoutAndRedirect}
+          >
+            <Image />
+
+            <Text style={styles.logoutText}>Log Out</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0D0D0D" },
-  scroll: { padding: 24, paddingBottom: 48, gap: 8 },
-  title: { color: "#fff", fontSize: 26, fontWeight: "800", marginBottom: 12 },
-  card: {
+  container: {
+    flex: 1,
+    backgroundColor: "#FBFBFF",
+  },
+
+  scroll: {
+    paddingBottom: 40,
+  },
+
+  header: {
+    height: 64,
+    paddingHorizontal: 20,
+    backgroundColor: "#FFFFFF",
+    marginTop: 30,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F1F7",
+    justifyContent: "center",
+  },
+
+  logoContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderRadius: 16,
-    padding: 16,
+    gap: 8,
   },
-  avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: "rgba(200,240,77,0.15)",
+
+  logoIconContainer: {
+    width: 30,
+    height: 34,
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarText: { color: "#C8F04D", fontSize: 22, fontWeight: "800" },
-  infoRow: { flex: 1, gap: 2 },
-  name: { color: "#fff", fontSize: 17, fontWeight: "700" },
-  meta: { color: "rgba(255,255,255,0.4)", fontSize: 12, textTransform: "capitalize" },
-  sectionTitle: {
-    color: "rgba(255,255,255,0.5)",
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 0.5,
-    textTransform: "uppercase",
-    marginTop: 18,
-    marginBottom: 6,
-  },
-  logoutBtn: {
+
+  titlePill: {
+    marginHorizontal: 20,
     marginTop: 24,
-    backgroundColor: "rgba(242,129,107,0.12)",
-    borderWidth: 1,
-    borderColor: "rgba(242,129,107,0.3)",
-    borderRadius: 14,
-    paddingVertical: 14,
+    height: 86,
+    borderRadius: 24,
+    backgroundColor: "#D8E3FB",
     alignItems: "center",
+    justifyContent: "center",
   },
-  logoutBtnText: { color: "#F2816B", fontSize: 14, fontWeight: "700" },
+
+  logo: {
+    marginLeft: 16,
+    width: 48,
+    height: 48,
+  },
+
+  titleRole: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#171C2E",
+    fontFamily: "Inter_400Regular",
+  },
+
+  titleName: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#171C2E",
+    fontFamily: "Inter_400Regular",
+  },
+
+  sectionCard: {
+    marginHorizontal: 20,
+    marginTop: 24,
+    padding: 20,
+    borderRadius: 20,
+    backgroundColor: "#D8E3FB",
+  },
+
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 20,
+  },
+
+  sectionHeading: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#000",
+    fontFamily: "Inter_400Regular",
+  },
+
+  fieldLabel: {
+    marginLeft: 4,
+    marginBottom: 7,
+    fontSize: 12,
+    color: "#555967",
+    fontFamily: "Inter_400Regular",
+  },
+
+  hiddenInfo: {
+    display: "none",
+  },
+
+  logoutContainer: {
+    marginHorizontal: 20,
+    marginTop: 40,
+    paddingTop: 15,
+    borderTopWidth: 1,
+    borderTopColor: "#fff",
+  },
+
+  logoutButton: {
+    height: 57,
+    borderRadius: 12,
+    backgroundColor: "#FFD8D4",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 9,
+  },
+
+  logoutText: {
+    fontSize: 15,
+    color: "#D90000",
+    fontFamily: "Inter_400Regular",
+  },
 });

@@ -63,7 +63,7 @@ export default function AdminSubjectDetail() {
   return (
     <SafeAreaView style={styles.container}>
       <Stack.Screen options={{ title: subjectName || "Subject" }} />
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.title}>{subjectName}</Text>
 
@@ -102,29 +102,57 @@ export default function AdminSubjectDetail() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0D0D0D" },
+  container: { flex: 1, backgroundColor: "#FBFBFF" },
   scroll: { padding: 24, gap: 8, paddingBottom: 48 },
-  title: { color: "#fff", fontSize: 26, fontWeight: "800", marginBottom: 8 },
+  title: {
+    color: "#17181C",
+    fontSize: 26,
+    fontWeight: "800",
+    marginBottom: 8,
+    fontFamily: "Inter_400Regular",
+  },
   sectionTitle: {
-    color: "rgba(255,255,255,0.5)",
+    color: "#85899B",
     fontSize: 12,
     fontWeight: "700",
     letterSpacing: 0.5,
     textTransform: "uppercase",
     marginTop: 20,
     marginBottom: 4,
+    fontFamily: "Inter_400Regular",
   },
   sessionRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.04)",
+    backgroundColor: "#FFFFFF",
     borderRadius: 12,
     padding: 14,
     marginBottom: 6,
+    borderWidth: 1,
+    borderColor: "#ECECE7",
   },
-  sessionDate: { color: "#fff", fontSize: 14, fontWeight: "600" },
-  sessionRoom: { color: "rgba(255,255,255,0.4)", fontSize: 13 },
-  pdfLink: { color: "#C8F04D", fontSize: 12, fontWeight: "700" },
-  empty: { color: "rgba(255,255,255,0.3)", fontSize: 13, marginTop: 4 },
+  sessionDate: {
+    color: "#17181C",
+    fontSize: 14,
+    fontWeight: "600",
+    fontFamily: "Inter_400Regular",
+  },
+  sessionRoom: {
+    color: "#85899B",
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+  },
+  pdfLink: {
+    color: "#305CDE",
+    fontSize: 12,
+    fontWeight: "700",
+    fontFamily: "Inter_400Regular",
+  },
+  empty: {
+    color: "#9A9DA6",
+    fontSize: 13,
+    marginTop: 4,
+    fontFamily: "Inter_400Regular",
+  },
 });

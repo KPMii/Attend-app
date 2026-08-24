@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import {
@@ -20,6 +21,7 @@ type Row = {
 
 export default function SessionDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
+
   const [sessionInfo, setSessionInfo] = useState<{
     subject: string;
     room: string;
@@ -28,6 +30,7 @@ export default function SessionDetail() {
     eventName: string | null;
     sectionId: string | null;
   } | null>(null);
+
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -66,7 +69,6 @@ export default function SessionDetail() {
     );
 
     if (session?.section_id) {
-      // Class session: show full roster with absent computed
       const { data: roster } = await supabase.rpc("get_section_roster", {
         p_section_id: session.section_id,
       });
@@ -77,11 +79,12 @@ export default function SessionDetail() {
         school_id_no: r.school_id_no,
         status: (attendanceMap.get(r.student_id) as any) ?? "absent",
       }));
+
       combined.sort((a, b) => a.full_name.localeCompare(b.full_name));
       setRows(combined);
     } else {
-      // Event: no roster, just show who actually scanned
       const studentIds = [...attendanceMap.keys()];
+
       if (studentIds.length > 0) {
         const { data: profiles } = await supabase
           .from("profiles")
@@ -94,6 +97,7 @@ export default function SessionDetail() {
           school_id_no: p.school_id_no,
           status: attendanceMap.get(p.id) as any,
         }));
+
         combined.sort((a, b) => a.full_name.localeCompare(b.full_name));
         setRows(combined);
       }
@@ -106,45 +110,63 @@ export default function SessionDetail() {
   const lateCount = rows.filter((r) => r.status === "late").length;
   const absentCount = rows.filter((r) => r.status === "absent").length;
 
-  const statusColor = (s: string) =>
-    s === "present" ? "#C8F04D" : s === "late" ? "#F2C14E" : "#F2816B";
-
   const title =
     sessionInfo?.sessionType === "event"
       ? sessionInfo.eventName
       : sessionInfo?.subject;
 
+  const formatTime = (value: string) =>
+    new Date(value).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
   return (
     <SafeAreaView style={styles.container}>
       <Stack.Screen options={{ title: "Session Attendance" }} />
-      <StatusBar barStyle="light-content" />
-      <ScrollView contentContainerStyle={styles.scroll}>
+
+      <StatusBar barStyle="dark-content" />
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scroll}
+      >
         {sessionInfo && (
           <View style={styles.headerCard}>
             <Text style={styles.sessionTitle}>{title}</Text>
-            <Text style={styles.sessionMeta}>
-              {sessionInfo.room} ·{" "}
-              {new Date(sessionInfo.createdAt).toLocaleString()}
-            </Text>
+
+            <View style={styles.metaRow}>
+              <Ionicons name="location-outline" size={15} color="#85899B" />
+
+              <Text style={styles.meta}>{sessionInfo.room || "No room"}</Text>
+
+              <Text style={styles.separator}>-</Text>
+
+              <Ionicons name="time-outline" size={15} color="#85899B" />
+
+              <Text style={styles.meta}>
+                {formatTime(sessionInfo.createdAt)}
+              </Text>
+            </View>
           </View>
         )}
 
         <View style={styles.summaryRow}>
           <View style={styles.summaryBox}>
-            <Text style={[styles.summaryNumber, { color: "#C8F04D" }]}>
+            <Text style={[styles.summaryNumber, styles.present]}>
               {presentCount}
             </Text>
             <Text style={styles.summaryLabel}>Present</Text>
           </View>
+
           <View style={styles.summaryBox}>
-            <Text style={[styles.summaryNumber, { color: "#F2C14E" }]}>
-              {lateCount}
-            </Text>
+            <Text style={[styles.summaryNumber, styles.late]}>{lateCount}</Text>
             <Text style={styles.summaryLabel}>Late</Text>
           </View>
+
           {sessionInfo?.sectionId && (
             <View style={styles.summaryBox}>
-              <Text style={[styles.summaryNumber, { color: "#F2816B" }]}>
+              <Text style={[styles.summaryNumber, styles.absent]}>
                 {absentCount}
               </Text>
               <Text style={styles.summaryLabel}>Absent</Text>
@@ -154,7 +176,8 @@ export default function SessionDetail() {
 
         {sessionInfo?.sessionType === "event" && (
           <TouchableOpacity
-            style={styles.resumeSessionBtn}
+            activeOpacity={0.8}
+            style={styles.resumeButton}
             onPress={() =>
               router.push({
                 pathname: "/faculty/qrgenerator",
@@ -162,26 +185,66 @@ export default function SessionDetail() {
               })
             }
           >
-            <Text style={styles.resumeSessionBtnText}>🔄 Start Again</Text>
+            <Text style={styles.resumeText}>Start Again</Text>
+
+            <Ionicons name="arrow-forward" size={17} color="#FFFFFF" />
           </TouchableOpacity>
         )}
+
+        <View style={styles.listHeader}>
+          <Text style={styles.listTitle}>
+            {sessionInfo?.sectionId ? "Class Roster" : "Attendees"}
+          </Text>
+
+          <Text style={styles.listCount}>{rows.length}</Text>
+        </View>
 
         {loading ? (
           <Text style={styles.empty}>Loading...</Text>
         ) : rows.length === 0 ? (
           <Text style={styles.empty}>No attendance recorded yet</Text>
         ) : (
-          rows.map((r) => (
-            <View key={r.id} style={styles.row}>
-              <View>
-                <Text style={styles.name}>{r.full_name}</Text>
-                <Text style={styles.idText}>{r.school_id_no}</Text>
-              </View>
-              <Text style={[styles.status, { color: statusColor(r.status) }]}>
-                {r.status.charAt(0).toUpperCase() + r.status.slice(1)}
-              </Text>
-            </View>
-          ))
+          <View style={styles.list}>
+            {rows.map((r, index) => {
+              const statusColor =
+                r.status === "present"
+                  ? "#6D9F24"
+                  : r.status === "late"
+                    ? "#B07A18"
+                    : "#C85D4D";
+
+              return (
+                <View
+                  key={r.id}
+                  style={[
+                    styles.row,
+                    index === rows.length - 1 && styles.lastRow,
+                  ]}
+                >
+                  <View style={styles.studentInfo}>
+                    <Text style={styles.name}>{r.full_name}</Text>
+
+                    <Text style={styles.idText}>
+                      {r.school_id_no || "No school ID"}
+                    </Text>
+                  </View>
+
+                  <View style={styles.status}>
+                    <View
+                      style={[
+                        styles.statusDot,
+                        { backgroundColor: statusColor },
+                      ]}
+                    />
+
+                    <Text style={[styles.statusText, { color: statusColor }]}>
+                      {r.status.charAt(0).toUpperCase() + r.status.slice(1)}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -189,51 +252,182 @@ export default function SessionDetail() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0D0D0D" },
-  scroll: { padding: 24, gap: 8, paddingBottom: 48 },
+  container: {
+    flex: 1,
+    backgroundColor: "#F9F9FF",
+  },
+
+  scroll: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+
   headerCard: {
-    backgroundColor: "rgba(255,255,255,0.04)",
+    backgroundColor: "#FFFFFF",
+    marginTop: 30,
     borderRadius: 16,
     padding: 16,
-    marginBottom: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#ECECE7",
   },
-  sessionTitle: { color: "#fff", fontSize: 20, fontWeight: "800" },
-  sessionMeta: { color: "rgba(255,255,255,0.4)", fontSize: 13, marginTop: 2 },
-  summaryRow: { flexDirection: "row", gap: 12, marginBottom: 16 },
+
+  sessionTitle: {
+    color: "#17181C",
+    fontSize: 21,
+    fontWeight: "800",
+    letterSpacing: -0.3,
+    marginBottom: 9,
+  },
+
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+
+  meta: {
+    color: "#85899B",
+    fontSize: 12,
+  },
+
+  separator: {
+    color: "#B7B9C0",
+    marginHorizontal: 2,
+  },
+
+  summaryRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 12,
+  },
+
   summaryBox: {
     flex: 1,
-    backgroundColor: "rgba(255,255,255,0.04)",
+    backgroundColor: "#FFFFFF",
     borderRadius: 14,
-    padding: 16,
-    alignItems: "center",
-  },
-  summaryNumber: { fontSize: 24, fontWeight: "800" },
-  summaryLabel: { color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 4 },
-  row: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 6,
-  },
-  name: { color: "#fff", fontSize: 14, fontWeight: "600" },
-  idText: { color: "rgba(255,255,255,0.4)", fontSize: 12 },
-  status: { fontSize: 13, fontWeight: "700" },
-  empty: { color: "rgba(255,255,255,0.3)", textAlign: "center", marginTop: 40 },
-  resumeSessionBtn: {
-    backgroundColor: "rgba(200,240,77,0.12)",
+    paddingVertical: 13,
+    paddingHorizontal: 10,
     borderWidth: 1,
-    borderColor: "rgba(200,240,77,0.3)",
-    borderRadius: 14,
-    paddingVertical: 12,
-    alignItems: "center",
-    marginBottom: 16,
+    borderColor: "#ECECE7",
   },
-  resumeSessionBtnText: {
-    color: "#C8F04D",
-    fontSize: 14,
+
+  summaryNumber: {
+    fontSize: 22,
+    fontWeight: "800",
+    marginBottom: 2,
+  },
+
+  summaryLabel: {
+    color: "#85899B",
+    fontSize: 11,
+  },
+
+  present: {
+    color: "#6D9F24",
+  },
+
+  late: {
+    color: "#B07A18",
+  },
+
+  absent: {
+    color: "#C85D4D",
+  },
+
+  resumeButton: {
+    height: 46,
+    backgroundColor: "#305CDE",
+    borderRadius: 13,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    marginBottom: 22,
+  },
+
+  resumeText: {
+    color: "#FFFFFF",
+    fontSize: 13,
     fontWeight: "700",
+  },
+
+  listHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 9,
+  },
+
+  listTitle: {
+    color: "#17181C",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+
+  listCount: {
+    color: "#85899B",
+    fontSize: 12,
+  },
+
+  list: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: "#ECECE7",
+  },
+
+  row: {
+    minHeight: 62,
+    flexDirection: "row",
+    alignItems: "center",
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F0EC",
+  },
+
+  lastRow: {
+    borderBottomWidth: 0,
+  },
+
+  studentInfo: {
+    flex: 1,
+  },
+
+  name: {
+    color: "#25262B",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+
+  idText: {
+    color: "#9A9DA6",
+    fontSize: 11,
+    marginTop: 3,
+  },
+
+  status: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginLeft: 10,
+  },
+
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+
+  statusText: {
+    fontSize: 11,
+    fontWeight: "700",
+  },
+
+  empty: {
+    color: "#9A9DA6",
+    fontSize: 12,
+    textAlign: "center",
+    marginTop: 40,
   },
 });

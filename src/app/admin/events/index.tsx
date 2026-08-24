@@ -41,7 +41,7 @@ export default function EventsList() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <View style={styles.header}>
         <Text style={styles.title}>Events</Text>
         <TouchableOpacity
@@ -62,7 +62,16 @@ export default function EventsList() {
             <View>
               <Text style={styles.eventName}>{item.event_name}</Text>
               <Text style={styles.eventMeta}>
-                {item.room} · {new Date(item.created_at).toLocaleDateString()}
+                {new Date(item.created_at).toLocaleDateString([], {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })}{" "}
+                ·{" "}
+                {new Date(item.created_at).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
               </Text>
             </View>
           </View>
@@ -76,7 +85,7 @@ export default function EventsList() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0D0D0D" },
+  container: { flex: 1, backgroundColor: "#FBFBFF" },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -84,17 +93,45 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 24,
     paddingBottom: 12,
+    marginTop: 36,
   },
-  title: { color: "#fff", fontSize: 26, fontWeight: "800" },
-  newLink: { color: "#C8F04D", fontSize: 13, fontWeight: "700" },
+  title: {
+    color: "#17181C",
+    fontSize: 26,
+    fontWeight: "800",
+    fontFamily: "Inter_400Regular",
+  },
+  newLink: {
+    color: "#305CDE",
+    fontSize: 13,
+    fontWeight: "700",
+    fontFamily: "Inter_400Regular",
+  },
   list: { paddingHorizontal: 24, paddingBottom: 40 },
   row: {
-    backgroundColor: "rgba(255,255,255,0.04)",
+    backgroundColor: "#FFFFFF",
     borderRadius: 14,
     padding: 16,
     marginBottom: 8,
+    borderWidth: 1,
+    borderColor: "#ECECE7",
   },
-  eventName: { color: "#fff", fontSize: 15, fontWeight: "600" },
-  eventMeta: { color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 2 },
-  empty: { color: "rgba(255,255,255,0.3)", textAlign: "center", marginTop: 40 },
+  eventName: {
+    color: "#17181C",
+    fontSize: 15,
+    fontWeight: "600",
+    fontFamily: "Inter_400Regular",
+  },
+  eventMeta: {
+    color: "#85899B",
+    fontSize: 12,
+    marginTop: 2,
+    fontFamily: "Inter_400Regular",
+  },
+  empty: {
+    color: "#9A9DA6",
+    textAlign: "center",
+    marginTop: 40,
+    fontFamily: "Inter_400Regular",
+  },
 });

@@ -122,7 +122,7 @@ export default function AdminSectionDetail() {
   return (
     <SafeAreaView style={styles.container}>
       <Stack.Screen options={{ title: sectionName || "Section" }} />
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.title}>{sectionName}</Text>
         <Text style={styles.roomText}>Room: {room || "—"}</Text>
@@ -132,7 +132,7 @@ export default function AdminSectionDetail() {
           <TextInput
             style={styles.input}
             placeholder="Enter School ID"
-            placeholderTextColor="rgba(255,255,255,0.25)"
+            placeholderTextColor="rgba(107, 85, 85, 0.25)"
             value={searchId}
             onChangeText={setSearchId}
             autoCapitalize="characters"
@@ -185,48 +185,66 @@ export default function AdminSectionDetail() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0D0D0D" },
+  container: { flex: 1, backgroundColor: "#FBFBFF" },
   scroll: { padding: 24, gap: 8, paddingBottom: 48 },
-  title: { color: "#fff", fontSize: 26, fontWeight: "800" },
+  title: {
+    color: "#17181C",
+    fontSize: 26,
+    fontWeight: "800",
+    fontFamily: "Inter_400Regular",
+    marginTop: 36,
+  },
   roomText: {
-    color: "rgba(255,255,255,0.4)",
+    color: "#85899B",
     fontSize: 13,
     marginTop: 2,
     marginBottom: 8,
+    fontFamily: "Inter_400Regular",
   },
   sectionTitle: {
-    color: "rgba(255,255,255,0.5)",
+    color: "#85899B",
     fontSize: 12,
     fontWeight: "700",
     letterSpacing: 0.5,
     textTransform: "uppercase",
     marginTop: 20,
     marginBottom: 4,
+    fontFamily: "Inter_400Regular",
   },
   addRow: { flexDirection: "row", gap: 8 },
   input: {
     flex: 1,
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: "#ECECE7",
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    color: "#fff",
+    color: "#17181C",
     fontSize: 14,
+    fontFamily: "Inter_400Regular",
   },
   searchBtn: {
-    backgroundColor: "rgba(255,255,255,0.1)",
+    backgroundColor: "#F0F3FF",
     borderRadius: 14,
     paddingHorizontal: 20,
     justifyContent: "center",
   },
-  searchBtnText: { color: "#fff", fontWeight: "700" },
-  errorText: { color: "#F2816B", fontSize: 12, marginTop: 4 },
+  searchBtnText: {
+    color: "#305CDE",
+    fontWeight: "700",
+    fontFamily: "Inter_400Regular",
+  },
+  errorText: {
+    color: "#C85D4D",
+    fontSize: 12,
+    marginTop: 4,
+    fontFamily: "Inter_400Regular",
+  },
   foundCard: {
-    backgroundColor: "rgba(200,240,77,0.08)",
+    backgroundColor: "#F0F3FF",
     borderWidth: 1,
-    borderColor: "rgba(200,240,77,0.25)",
+    borderColor: "#D8E0FB",
     borderRadius: 14,
     padding: 14,
     marginTop: 8,
@@ -234,32 +252,68 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
-  foundName: { color: "#fff", fontSize: 14, fontWeight: "600" },
-  foundId: { color: "rgba(255,255,255,0.4)", fontSize: 12 },
+  foundName: {
+    color: "#17181C",
+    fontSize: 14,
+    fontWeight: "600",
+    fontFamily: "Inter_400Regular",
+  },
+  foundId: {
+    color: "#85899B",
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+  },
   foundOtherSections: {
-    color: "rgba(255,255,255,0.35)",
+    color: "#9A9DA6",
     fontSize: 11,
     marginTop: 4,
     fontStyle: "italic",
+    fontFamily: "Inter_400Regular",
   },
   addBtn: {
-    backgroundColor: "#C8F04D",
+    backgroundColor: "#305CDE",
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 8,
   },
-  addBtnText: { color: "#0D0D0D", fontWeight: "800", fontSize: 12 },
+  addBtnText: {
+    color: "#FFFFFF",
+    fontWeight: "800",
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+  },
   rosterRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.04)",
+    backgroundColor: "#FFFFFF",
     borderRadius: 12,
     padding: 14,
     marginBottom: 6,
+    borderWidth: 1,
+    borderColor: "#ECECE7",
   },
-  rosterName: { color: "#fff", fontSize: 14, fontWeight: "600" },
-  rosterId: { color: "rgba(255,255,255,0.4)", fontSize: 12 },
-  removeText: { color: "#F2816B", fontSize: 13, fontWeight: "600" },
-  empty: { color: "rgba(255,255,255,0.3)", fontSize: 13, marginTop: 4 },
+  rosterName: {
+    color: "#17181C",
+    fontSize: 14,
+    fontWeight: "600",
+    fontFamily: "Inter_400Regular",
+  },
+  rosterId: {
+    color: "#85899B",
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+  },
+  removeText: {
+    color: "#C85D4D",
+    fontSize: 13,
+    fontWeight: "600",
+    fontFamily: "Inter_400Regular",
+  },
+  empty: {
+    color: "#9A9DA6",
+    fontSize: 13,
+    marginTop: 4,
+    fontFamily: "Inter_400Regular",
+  },
 });

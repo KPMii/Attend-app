@@ -71,7 +71,7 @@ export default function FacultySessionHistory() {
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.row}
-            onPress={() => router.push(`/faculty/sessions/${item.id}`)}
+            onPress={() => router.push(`/admin/sessions/${item.id}`)}
           >
             <View style={styles.rowLeft}>
               <View style={styles.rowHeader}>

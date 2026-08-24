@@ -237,7 +237,7 @@ export default function StudentDetail() {
             disabled={saving}
           >
             <Text style={styles.saveBtnText}>
-              {saving ? "Saving..." : saved ? "✓ Saved" : "Save Changes"}
+              {saving ? "Saving..." : saved ? "Saved" : "Save Changes"}
             </Text>
           </TouchableOpacity>
         </View>
@@ -318,7 +318,7 @@ export default function StudentDetail() {
               {resetting
                 ? "Resetting..."
                 : resetDone
-                  ? "✓ Password Reset"
+                  ? "Password Reset"
                   : "Reset Password"}
             </Text>
           </TouchableOpacity>
@@ -556,7 +556,12 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   confirmText: { color: "rgba(255,255,255,0.6)", fontSize: 13, lineHeight: 18 },
-  sectionsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 4 },
+  sectionsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 4,
+  },
   sectionChip: {
     backgroundColor: "rgba(200,240,77,0.1)",
     borderWidth: 1,

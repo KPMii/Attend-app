@@ -19,9 +19,9 @@ type LogRow = {
 };
 
 const actionColor: Record<string, string> = {
-  login: "#C8F04D",
-  logout: "#F2C14E",
-  session_created: "#C8F04D",
+  login: "#6D9F24",
+  logout: "#B07A18",
+  session_created: "#6D9F24",
   profile_updated: "#4EA1F2",
 };
 
@@ -52,7 +52,7 @@ export default function AuditLog() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <View style={styles.header}>
         <Text style={styles.title}>Audit Log</Text>
         <Text style={styles.subtitle}>{totalCount} total entries</Text>
@@ -80,7 +80,16 @@ export default function AuditLog() {
                 <Text style={styles.description}>{item.description}</Text>
               )}
               <Text style={styles.time}>
-                {new Date(item.created_at).toLocaleString()}
+                {new Date(item.created_at).toLocaleDateString([], {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })}{" "}
+                ·{" "}
+                {new Date(item.created_at).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
               </Text>
             </View>
           </View>
@@ -120,30 +129,62 @@ export default function AuditLog() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0D0D0D" },
-  header: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 12 },
-  title: { color: "#fff", fontSize: 26, fontWeight: "800" },
-  subtitle: { color: "rgba(255,255,255,0.4)", fontSize: 13, marginTop: 2 },
+  container: { flex: 1, backgroundColor: "#FBFBFF" },
+  header: {
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 12,
+    marginTop: 36,
+  },
+  title: {
+    color: "#17181C",
+    fontSize: 26,
+    fontWeight: "800",
+    fontFamily: "Inter_400Regular",
+  },
+  subtitle: {
+    color: "#85899B",
+    fontSize: 13,
+    marginTop: 2,
+    fontFamily: "Inter_400Regular",
+  },
   list: { paddingHorizontal: 24, paddingBottom: 8 },
   row: {
     flexDirection: "row",
     gap: 12,
-    backgroundColor: "rgba(255,255,255,0.04)",
+    backgroundColor: "#FFFFFF",
     borderRadius: 14,
     padding: 16,
     marginBottom: 8,
+    borderWidth: 1,
+    borderColor: "#ECECE7",
   },
   dot: { width: 8, height: 8, borderRadius: 4, marginTop: 6 },
   rowContent: { flex: 1, gap: 2 },
   action: {
-    color: "#fff",
+    color: "#17181C",
     fontSize: 14,
     fontWeight: "700",
     textTransform: "capitalize",
+    fontFamily: "Inter_400Regular",
   },
-  description: { color: "rgba(255,255,255,0.6)", fontSize: 13 },
-  time: { color: "rgba(255,255,255,0.35)", fontSize: 11, marginTop: 2 },
-  empty: { color: "rgba(255,255,255,0.3)", textAlign: "center", marginTop: 40 },
+  description: {
+    color: "#626575",
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+  },
+  time: {
+    color: "#9A9DA6",
+    fontSize: 11,
+    marginTop: 2,
+    fontFamily: "Inter_400Regular",
+  },
+  empty: {
+    color: "#9A9DA6",
+    textAlign: "center",
+    marginTop: 40,
+    fontFamily: "Inter_400Regular",
+  },
   pagerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -152,12 +193,21 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   pagerBtn: {
-    backgroundColor: "rgba(255,255,255,0.08)",
+    backgroundColor: "#F0F3FF",
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
-  pagerBtnDisabled: { opacity: 0.3 },
-  pagerBtnText: { color: "#fff", fontSize: 13, fontWeight: "600" },
-  pagerLabel: { color: "rgba(255,255,255,0.4)", fontSize: 12 },
+  pagerBtnDisabled: { opacity: 0.35 },
+  pagerBtnText: {
+    color: "#305CDE",
+    fontSize: 13,
+    fontWeight: "700",
+    fontFamily: "Inter_400Regular",
+  },
+  pagerLabel: {
+    color: "#85899B",
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+  },
 });

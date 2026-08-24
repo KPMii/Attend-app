@@ -7,17 +7,12 @@ import {
   StatusBar,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { useAuthStore } from "../../../../stores/authStore";
 import { logAction } from "../../../lib/audit";
-import {
-  buildRangeCsv,
-  buildSingleCsv,
-  shareCsv,
-} from "../../../lib/csvExport";
+import { buildSingleCsv, shareCsv } from "../../../lib/csvExport";
 import { supabase } from "../../../lib/supabase";
 
 type Section = { id: string; name: string };
@@ -41,13 +36,7 @@ export default function Reports() {
   );
   const [ownSessions, setOwnSessions] = useState<SessionRow[]>([]);
 
-  const [reportMode, setReportMode] = useState<"range" | "single">("range");
   const [exportFormat, setExportFormat] = useState<ExportFormat>("pdf");
-
-  const [startDate, setStartDate] = useState(
-    new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10),
-  );
-  const [endDate, setEndDate] = useState(new Date().toISOString().slice(0, 10));
 
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(
@@ -75,6 +64,7 @@ export default function Reports() {
         .from("sessions")
         .select("id, subject, created_at, session_type, event_name")
         .eq("faculty_id", userId)
+        .eq("session_type", "event")
         .order("created_at", { ascending: false })
         .limit(50)
         .then(({ data }) => {
@@ -84,9 +74,9 @@ export default function Reports() {
   }, [role, userId]);
 
   useEffect(() => {
-    if (!selectedSectionId || reportMode !== "single") return;
+    if (!selectedSectionId) return;
     loadSessions();
-  }, [selectedSectionId, reportMode]);
+  }, [selectedSectionId]);
 
   const loadSessions = async () => {
     const { data } = await supabase
@@ -101,36 +91,77 @@ export default function Reports() {
 
   // Fetch shared data for both PDF and CSV exports
   const fetchReportData = async () => {
-    if (!selectedSectionId) {
+    // Student council officers generate reports for their own event sessions,
+    // which have no section — so the section requirement must be skipped.
+    const isEvent = role === "student_council_officer";
+
+    if (!selectedSessionId) {
+      setError(
+        isEvent
+          ? "Please select an event session"
+          : "Please select a section and session",
+      );
+      return null;
+    }
+
+    if (!isEvent && !selectedSectionId) {
       setError("Please select a section");
       return null;
     }
-    if (reportMode === "single" && !selectedSessionId) {
-      setError("Please select a session");
-      return null;
-    }
 
-    const sectionName =
-      sections.find((s) => s.id === selectedSectionId)?.name ??
-      "Unknown Section";
+    const session = isEvent
+      ? ownSessions.find((s) => s.id === selectedSessionId)
+      : sessions.find((s) => s.id === selectedSessionId);
 
-    if (reportMode === "single") {
-      const session = sessions.find((s) => s.id === selectedSessionId);
+    const { data: attendance } = await supabase
+      .from("attendance")
+      .select("student_id, status, scanned_at")
+      .eq("session_id", selectedSessionId);
+
+    const attendanceMap = new Map(
+      (attendance ?? []).map((a) => [
+        a.student_id,
+        { status: a.status, scannedAt: a.scanned_at },
+      ]),
+    );
+
+    let sectionName = "";
+    let rows: {
+      name: string;
+      schoolId: string;
+      status: string;
+      scannedAt: string | null;
+    }[] = [];
+
+    if (isEvent) {
+      // Event session: no roster — only report the students who actually scanned.
+      const studentIds = [...attendanceMap.keys()];
+      if (studentIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, full_name, school_id_no")
+          .in("id", studentIds);
+
+        rows = (profiles ?? [])
+          .map((p) => ({
+            name: p.full_name ?? "Unknown",
+            schoolId: p.school_id_no ?? "—",
+            status: attendanceMap.get(p.id)?.status ?? "present",
+            scannedAt: attendanceMap.get(p.id)?.scannedAt ?? null,
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name));
+      }
+      sectionName = "Event";
+    } else {
+      sectionName =
+        sections.find((s) => s.id === selectedSectionId)?.name ??
+        "Unknown Section";
+
       const { data: roster } = await supabase.rpc("get_section_roster", {
         p_section_id: selectedSectionId,
       });
-      const { data: attendance } = await supabase
-        .from("attendance")
-        .select("student_id, status, scanned_at")
-        .eq("session_id", selectedSessionId);
 
-      const attendanceMap = new Map(
-        (attendance ?? []).map((a) => [
-          a.student_id,
-          { status: a.status, scannedAt: a.scanned_at },
-        ]),
-      );
-      const rows = (roster ?? [])
+      rows = (roster ?? [])
         .map((student: any) => ({
           name: student.full_name,
           schoolId: student.school_id_no,
@@ -138,73 +169,15 @@ export default function Reports() {
           scannedAt: attendanceMap.get(student.student_id)?.scannedAt ?? null,
         }))
         .sort((a: any, b: any) => a.name.localeCompare(b.name));
-
-      return {
-        type: "single" as const,
-        sectionName,
-        subject: session?.subject ?? "Unknown Subject",
-        sessionDate: session?.created_at ?? "",
-        rows,
-      };
     }
 
-    // Range report
-    const { data: roster } = await supabase.rpc("get_section_roster", {
-      p_section_id: selectedSectionId,
-    });
-    const { data: rangeSessions } = await supabase
-      .from("sessions")
-      .select("id, subject, created_at")
-      .eq("section_id", selectedSectionId)
-      .gte("created_at", `${startDate}T00:00:00`)
-      .lte("created_at", `${endDate}T23:59:59`)
-      .order("created_at");
-
-    const sessionIds = (rangeSessions ?? []).map((s) => s.id);
-    const { data: attendance } =
-      sessionIds.length > 0
-        ? await supabase
-            .from("attendance")
-            .select("student_id, session_id, status")
-            .in("session_id", sessionIds)
-        : { data: [] };
-
-    const attendanceMap = new Map<string, Map<string, string>>();
-    (attendance ?? []).forEach((a) => {
-      if (!attendanceMap.has(a.student_id))
-        attendanceMap.set(a.student_id, new Map());
-      attendanceMap.get(a.student_id)!.set(a.session_id, a.status);
-    });
-
-    const summaryRows = (roster ?? []).map((student: any) => {
-      const studentAttendance =
-        attendanceMap.get(student.student_id) ?? new Map();
-      let present = 0,
-        late = 0,
-        absent = 0;
-      (rangeSessions ?? []).forEach((s) => {
-        const status = studentAttendance.get(s.id);
-        if (status === "present") present++;
-        else if (status === "late") late++;
-        else absent++;
-      });
-      return {
-        name: student.full_name,
-        schoolId: student.school_id_no,
-        present,
-        late,
-        absent,
-        total: (rangeSessions ?? []).length,
-      };
-    });
-
     return {
-      type: "range" as const,
       sectionName,
-      startDate,
-      endDate,
-      totalSessions: (rangeSessions ?? []).length,
-      rows: summaryRows,
+      subject: isEvent
+        ? (session?.event_name ?? session?.subject ?? "Event Session")
+        : (session?.subject ?? "Unknown Subject"),
+      sessionDate: session?.created_at ?? "",
+      rows,
     };
   };
 
@@ -220,37 +193,22 @@ export default function Reports() {
       }
 
       if (exportFormat === "csv") {
-        const csv =
-          data.type === "single"
-            ? buildSingleCsv(data.rows)
-            : buildRangeCsv(data.rows);
+        const csv = buildSingleCsv(data.rows);
         const filename = `attendance_${data.sectionName.replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}`;
         await shareCsv(csv, filename);
       } else {
-        const html =
-          data.type === "single"
-            ? buildSingleSessionHtml({
-                sectionName: data.sectionName,
-                subject: data.subject,
-                sessionDate: data.sessionDate,
-                rows: data.rows,
-              })
-            : buildRangeReportHtml({
-                sectionName: data.sectionName,
-                startDate: data.startDate,
-                endDate: data.endDate,
-                totalSessions: data.totalSessions,
-                rows: data.rows,
-              });
+        const html = buildSingleSessionHtml({
+          sectionName: data.sectionName,
+          subject: data.subject,
+          sessionDate: data.sessionDate,
+          rows: data.rows,
+        });
         const { uri } = await Print.printToFileAsync({ html });
         if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri);
       }
 
       logAction("session_created", {
-        description:
-          reportMode === "single"
-            ? `Generated ${exportFormat.toUpperCase()} single-session report`
-            : `Generated ${exportFormat.toUpperCase()} range report (${startDate} to ${endDate})`,
+        description: `Generated ${exportFormat.toUpperCase()} single-session report`,
       });
     } catch (err) {
       console.error("Report generation error:", err);
@@ -265,197 +223,218 @@ export default function Reports() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" />
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.title}>Attendance Reports</Text>
+      <StatusBar barStyle="dark-content" />
 
-        <View style={styles.typeToggleRow}>
-          <TouchableOpacity
-            style={[
-              styles.typeToggle,
-              reportMode === "range" && styles.typeToggleActive,
-            ]}
-            onPress={() => setReportMode("range")}
-          >
-            <Text
-              style={[
-                styles.typeToggleText,
-                reportMode === "range" && styles.typeToggleTextActive,
-              ]}
-            >
-              Date Range Summary
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.typeToggle,
-              reportMode === "single" && styles.typeToggleActive,
-            ]}
-            onPress={() => setReportMode("single")}
-          >
-            <Text
-              style={[
-                styles.typeToggleText,
-                reportMode === "single" && styles.typeToggleTextActive,
-              ]}
-            >
-              Single Session
-            </Text>
-          </TouchableOpacity>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scroll}
+      >
+        <View style={styles.heading}>
+          <Text style={styles.title}>Attendance Reports</Text>
+          <Text style={styles.subtitle}>Choose what you want to export.</Text>
         </View>
 
-        {showSectionPicker ? (
-          <>
-            <Text style={styles.label}>Section</Text>
-            <View style={styles.chipRow}>
-              {sections.map((s) => (
-                <TouchableOpacity
-                  key={s.id}
-                  style={[
-                    styles.chip,
-                    selectedSectionId === s.id && styles.chipActive,
-                  ]}
-                  onPress={() => setSelectedSectionId(s.id)}
-                >
-                  <Text
-                    style={[
-                      styles.chipText,
-                      selectedSectionId === s.id && styles.chipTextActive,
-                    ]}
-                  >
-                    {s.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </>
-        ) : (
-          <>
-            <Text style={styles.label}>My Event Sessions</Text>
-            {ownSessions.length === 0 ? (
-              <Text style={styles.hint}>
-                No event sessions yet. Create one from the QR Generator.
-              </Text>
-            ) : (
-              <View style={styles.sessionList}>
-                {ownSessions.map((s) => (
+        <View style={styles.formSection}>
+          <Text style={styles.label}>
+            {showSectionPicker ? "Section" : "Session"}
+          </Text>
+
+          {showSectionPicker ? (
+            <View style={styles.optionList}>
+              {sections.map((s) => {
+                const selected = selectedSectionId === s.id;
+
+                return (
                   <TouchableOpacity
                     key={s.id}
-                    style={[
-                      styles.sessionRow,
-                      selectedSessionId === s.id && styles.sessionRowActive,
-                    ]}
-                    onPress={() => {
-                      setSelectedSessionId(s.id);
-                      // Auto-switch to single session mode when selecting from own sessions
-                      setReportMode("single");
-                    }}
+                    activeOpacity={0.75}
+                    style={[styles.option, selected && styles.optionSelected]}
+                    onPress={() => setSelectedSectionId(s.id)}
                   >
-                    <Text style={styles.sessionSubject}>
-                      {s.event_name || s.subject}
+                    <Text
+                      style={[
+                        styles.optionText,
+                        selected && styles.optionTextSelected,
+                      ]}
+                    >
+                      {s.name}
                     </Text>
-                    <Text style={styles.sessionDate}>
-                      {new Date(s.created_at).toLocaleString()}
-                    </Text>
+
+                    {selected && (
+                      <View style={styles.selectedMark}>
+                        <Text style={styles.selectedMarkText}>✓</Text>
+                      </View>
+                    )}
                   </TouchableOpacity>
-                ))}
+                );
+              })}
+            </View>
+          ) : ownSessions.length === 0 ? (
+            <Text style={styles.hint}>
+              No event sessions yet. Create one from the QR Generator.
+            </Text>
+          ) : (
+            <View style={styles.optionList}>
+              {ownSessions.map((s) => {
+                const selected = selectedSessionId === s.id;
+
+                return (
+                  <TouchableOpacity
+                    key={s.id}
+                    activeOpacity={0.75}
+                    style={[styles.option, selected && styles.optionSelected]}
+                    onPress={() => setSelectedSessionId(s.id)}
+                  >
+                    <View style={styles.optionContent}>
+                      <Text
+                        style={[
+                          styles.optionText,
+                          selected && styles.optionTextSelected,
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {s.event_name || s.subject}
+                      </Text>
+
+                      <Text style={styles.optionMeta}>
+                        {new Date(s.created_at).toLocaleDateString([], {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}{" "}
+                        ·{" "}
+                        {new Date(s.created_at).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </Text>
+                    </View>
+
+                    {selected && (
+                      <View style={styles.selectedMark}>
+                        <Text style={styles.selectedMarkText}>✓</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
+        </View>
+
+        {showSectionPicker && (
+          <View style={styles.formSection}>
+            <Text style={styles.label}>Session</Text>
+
+            {!selectedSectionId ? (
+              <Text style={styles.hint}>Select a section first.</Text>
+            ) : sessions.length === 0 ? (
+              <Text style={styles.hint}>
+                No sessions found for this section.
+              </Text>
+            ) : (
+              <View style={styles.optionList}>
+                {sessions.map((s) => {
+                  const selected = selectedSessionId === s.id;
+
+                  return (
+                    <TouchableOpacity
+                      key={s.id}
+                      activeOpacity={0.75}
+                      style={[styles.option, selected && styles.optionSelected]}
+                      onPress={() => setSelectedSessionId(s.id)}
+                    >
+                      <View style={styles.optionContent}>
+                        <Text
+                          style={[
+                            styles.optionText,
+                            selected && styles.optionTextSelected,
+                          ]}
+                        >
+                          {s.subject}
+                        </Text>
+
+                        <Text style={styles.optionMeta}>
+                          {new Date(s.created_at).toLocaleDateString([], {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}{" "}
+                          ·{" "}
+                          {new Date(s.created_at).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </Text>
+                      </View>
+
+                      {selected && (
+                        <View style={styles.selectedMark}>
+                          <Text style={styles.selectedMarkText}>✓</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             )}
-          </>
+          </View>
         )}
 
-        {reportMode === "range" && showSectionPicker && (
-          <>
-            <Text style={styles.label}>Start Date</Text>
-            <TextInput
-              style={styles.input}
-              value={startDate}
-              onChangeText={setStartDate}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor="rgba(255,255,255,0.25)"
-            />
+        <View style={styles.formSection}>
+          <Text style={styles.label}>Export Format</Text>
 
-            <Text style={styles.label}>End Date</Text>
-            <TextInput
-              style={styles.input}
-              value={endDate}
-              onChangeText={setEndDate}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor="rgba(255,255,255,0.25)"
-            />
-          </>
-        )}
-
-        {reportMode === "single" &&
-          showSectionPicker &&
-          (!selectedSectionId ? (
-            <Text style={styles.hint}>Select a section first</Text>
-          ) : sessions.length === 0 ? (
-            <Text style={styles.hint}>No sessions found for this section</Text>
-          ) : (
-            <View style={styles.sessionList}>
-              {sessions.map((s) => (
-                <TouchableOpacity
-                  key={s.id}
-                  style={[
-                    styles.sessionRow,
-                    selectedSessionId === s.id && styles.sessionRowActive,
-                  ]}
-                  onPress={() => setSelectedSessionId(s.id)}
-                >
-                  <Text style={styles.sessionSubject}>{s.subject}</Text>
-                  <Text style={styles.sessionDate}>
-                    {new Date(s.created_at).toLocaleString()}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          ))}
-
-        <Text style={styles.label}>Export Format</Text>
-        <View style={styles.formatToggleRow}>
-          <TouchableOpacity
-            style={[
-              styles.formatToggle,
-              exportFormat === "pdf" && styles.formatToggleActive,
-            ]}
-            onPress={() => setExportFormat("pdf")}
-          >
-            <Text
+          <View style={styles.formatRow}>
+            <TouchableOpacity
+              activeOpacity={0.8}
               style={[
-                styles.formatToggleText,
-                exportFormat === "pdf" && styles.formatToggleTextActive,
+                styles.formatOption,
+                exportFormat === "pdf" && styles.formatSelected,
               ]}
+              onPress={() => setExportFormat("pdf")}
             >
-              PDF
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.formatToggle,
-              exportFormat === "csv" && styles.formatToggleActive,
-            ]}
-            onPress={() => setExportFormat("csv")}
-          >
-            <Text
+              <Text
+                style={[
+                  styles.formatText,
+                  exportFormat === "pdf" && styles.formatTextSelected,
+                ]}
+              >
+                PDF
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              activeOpacity={0.8}
               style={[
-                styles.formatToggleText,
-                exportFormat === "csv" && styles.formatToggleTextActive,
+                styles.formatOption,
+                exportFormat === "csv" && styles.formatSelected,
               ]}
+              onPress={() => setExportFormat("csv")}
             >
-              Excel (CSV)
-            </Text>
-          </TouchableOpacity>
+              <Text
+                style={[
+                  styles.formatText,
+                  exportFormat === "csv" && styles.formatTextSelected,
+                ]}
+              >
+                Excel (CSV)
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {error && <Text style={styles.errorText}>{error}</Text>}
 
         <TouchableOpacity
-          style={[styles.generateBtn, generating && styles.generateBtnDisabled]}
+          activeOpacity={0.85}
+          style={[
+            styles.generateButton,
+            generating && styles.generateButtonDisabled,
+          ]}
           onPress={generateReport}
           disabled={generating}
         >
-          <Text style={styles.generateBtnText}>
+          <Text style={styles.generateButtonText}>
             {generating
               ? "Generating..."
               : `Generate ${exportFormat === "pdf" ? "PDF" : "CSV"} Report`}
@@ -464,70 +443,6 @@ export default function Reports() {
       </ScrollView>
     </SafeAreaView>
   );
-}
-
-function buildRangeReportHtml({
-  sectionName,
-  startDate,
-  endDate,
-  totalSessions,
-  rows,
-}: {
-  sectionName: string;
-  startDate: string;
-  endDate: string;
-  totalSessions: number;
-  rows: {
-    name: string;
-    schoolId: string;
-    present: number;
-    late: number;
-    absent: number;
-    total: number;
-  }[];
-}) {
-  const rowsHtml = rows
-    .map(
-      (r) => `
-    <tr>
-      <td>${r.name}</td>
-      <td>${r.schoolId}</td>
-      <td style="text-align:center; color:#2e7d32;">${r.present}</td>
-      <td style="text-align:center; color:#e65100;">${r.late}</td>
-      <td style="text-align:center; color:#c62828;">${r.absent}</td>
-      <td style="text-align:center; font-weight:bold;">${
-        r.total > 0 ? Math.round(((r.present + r.late) / r.total) * 100) : 0
-      }%</td>
-    </tr>`,
-    )
-    .join("");
-
-  return `
-    <html>
-      <head><meta charset="utf-8" /><style>
-        body { font-family: Helvetica, Arial, sans-serif; padding: 32px; color: #222; }
-        h1 { font-size: 20px; margin-bottom: 4px; }
-        .meta { color: #666; font-size: 13px; margin-bottom: 24px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 16px; }
-        th { text-align: left; background: #f5f5f5; padding: 8px; font-size: 12px; text-transform: uppercase; color: #666; }
-        td { padding: 8px; border-bottom: 1px solid #eee; font-size: 13px; }
-      </style></head>
-      <body>
-        <h1>Attendance Report — ${sectionName}</h1>
-        <div class="meta">Period: ${startDate} to ${endDate} · ${totalSessions} session(s) total</div>
-        <table>
-          <thead><tr>
-            <th>Student</th><th>School ID</th>
-            <th style="text-align:center;">Present</th>
-            <th style="text-align:center;">Late</th>
-            <th style="text-align:center;">Absent</th>
-            <th style="text-align:center;">Attendance %</th>
-          </tr></thead>
-          <tbody>${rowsHtml}</tbody>
-        </table>
-      </body>
-    </html>
-  `;
 }
 
 function buildSingleSessionHtml({
@@ -608,104 +523,164 @@ function buildSingleSessionHtml({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0D0D0D" },
-  scroll: { padding: 24, gap: 8, paddingBottom: 48 },
-  title: { color: "#fff", fontSize: 26, fontWeight: "800", marginBottom: 8 },
-  typeToggleRow: {
-    flexDirection: "row",
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderRadius: 14,
-    padding: 4,
-    marginBottom: 8,
-  },
-  typeToggle: {
+  container: {
     flex: 1,
-    paddingVertical: 10,
-    borderRadius: 10,
-    alignItems: "center",
+    backgroundColor: "#F9F9FF",
   },
-  typeToggleActive: { backgroundColor: "#C8F04D" },
-  typeToggleText: {
-    color: "rgba(255,255,255,0.5)",
+
+  scroll: {
+    paddingHorizontal: 22,
+    paddingTop: 20,
+    paddingBottom: 48,
+  },
+
+  heading: {
+    marginTop: 42,
+    marginBottom: 28,
+  },
+
+  title: {
+    color: "#17181C",
+    fontSize: 25,
+    fontWeight: "800",
+    letterSpacing: -0.5,
+  },
+
+  subtitle: {
+    color: "#85899B",
     fontSize: 13,
-    fontWeight: "700",
+    marginTop: 5,
   },
-  typeToggleTextActive: { color: "#0D0D0D" },
+
+  formSection: {
+    marginBottom: 25,
+  },
+
   label: {
-    color: "rgba(255,255,255,0.5)",
+    color: "#272930",
+    fontSize: 13,
+    fontWeight: "700",
+    marginBottom: 9,
+  },
+
+  hint: {
+    color: "#989BA5",
     fontSize: 12,
-    fontWeight: "600",
-    marginTop: 12,
-    textTransform: "uppercase",
+    lineHeight: 18,
+    paddingVertical: 4,
   },
-  hint: { color: "rgba(255,255,255,0.3)", fontSize: 13, marginTop: 4 },
-  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  chip: {
+
+  optionList: {
+    gap: 7,
+  },
+
+  option: {
+    minHeight: 52,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 13,
+    borderWidth: 1,
+    borderColor: "#E9E9E4",
+    paddingHorizontal: 14,
     paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-    backgroundColor: "rgba(255,255,255,0.03)",
-  },
-  chipActive: {
-    backgroundColor: "rgba(200,240,77,0.14)",
-    borderColor: "#C8F04D",
-  },
-  chipText: { color: "rgba(255,255,255,0.6)", fontSize: 13, fontWeight: "700" },
-  chipTextActive: { color: "#C8F04D" },
-  input: {
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    color: "#fff",
-    fontSize: 15,
-  },
-  sessionList: { gap: 6 },
-  sessionRow: {
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: "transparent",
-  },
-  sessionRowActive: {
-    borderColor: "#C8F04D",
-    backgroundColor: "rgba(200,240,77,0.08)",
-  },
-  sessionSubject: { color: "#fff", fontSize: 14, fontWeight: "700" },
-  sessionDate: { color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 2 },
-  errorText: { color: "#F2816B", fontSize: 13, marginTop: 12 },
-  generateBtn: {
-    backgroundColor: "#C8F04D",
-    borderRadius: 16,
-    paddingVertical: 16,
-    alignItems: "center",
-    marginTop: 24,
-  },
-  generateBtnDisabled: { opacity: 0.5 },
-  generateBtnText: { color: "#0D0D0D", fontSize: 16, fontWeight: "800" },
-  formatToggleRow: {
     flexDirection: "row",
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderRadius: 14,
-    padding: 4,
-    marginBottom: 8,
-  },
-  formatToggle: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 10,
     alignItems: "center",
   },
-  formatToggleActive: { backgroundColor: "#C8F04D" },
-  formatToggleText: {
-    color: "rgba(255,255,255,0.5)",
+
+  optionSelected: {
+    borderColor: "#305CDE",
+    backgroundColor: "#F2F5FF",
+  },
+
+  optionContent: {
+    flex: 1,
+  },
+
+  optionText: {
+    color: "#303239",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+
+  optionTextSelected: {
+    color: "#305CDE",
+    fontWeight: "700",
+  },
+
+  optionMeta: {
+    color: "#999CA5",
+    fontSize: 10,
+    marginTop: 3,
+  },
+
+  selectedMark: {
+    width: 22,
+    height: 22,
+    borderRadius: 7,
+    backgroundColor: "#305CDE",
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 10,
+  },
+
+  selectedMarkText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+
+  formatRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+
+  formatOption: {
+    flex: 1,
+    height: 45,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E4E5E1",
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  formatSelected: {
+    backgroundColor: "#305CDE",
+    borderColor: "#305CDE",
+  },
+
+  formatText: {
+    color: "#777A84",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+
+  formatTextSelected: {
+    color: "#FFFFFF",
+  },
+
+  errorText: {
+    color: "#C85D4D",
+    fontSize: 12,
+    marginBottom: 12,
+  },
+
+  generateButton: {
+    height: 48,
+    borderRadius: 13,
+    backgroundColor: "#305CDE",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 2,
+  },
+
+  generateButtonDisabled: {
+    opacity: 0.5,
+  },
+
+  generateButtonText: {
+    color: "#FFFFFF",
     fontSize: 13,
     fontWeight: "700",
   },
-  formatToggleTextActive: { color: "#0D0D0D" },
 });

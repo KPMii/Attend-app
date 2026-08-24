@@ -2,6 +2,7 @@ import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   FlatList,
+  Image,
   SafeAreaView,
   StatusBar,
   StyleSheet,
@@ -10,10 +11,13 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { PAGE_SIZE, getRange } from "../../../lib/pagination";
+import { getRange } from "../../../lib/pagination";
 import { supabase } from "../../../lib/supabase";
 
 type Faculty = { id: string; full_name: string };
+
+const BLUE = "#305CDE";
+const FADED_BLUE = "#F0F3FF";
 
 export default function FacultyList() {
   const router = useRouter();
@@ -49,126 +53,294 @@ export default function FacultyList() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+
       <View style={styles.header}>
-        <View>
-          <Text style={styles.title}>Faculty</Text>
-          <Text style={styles.subtitle}>{totalCount} total</Text>
+        <View style={styles.logoContainer}>
+          <View style={styles.logoPlaceholder}>
+            <Image
+              source={require("../../assets/logo.png")}
+              style={styles.logo}
+            />
+          </View>
         </View>
-        <TouchableOpacity onPress={() => router.push("/admin/faculty/add")}>
-          <Text style={styles.addLink}>+ Add Faculty</Text>
-        </TouchableOpacity>
       </View>
 
-      <TextInput
-        style={styles.search}
-        placeholder="Search this page by name..."
-        placeholderTextColor="rgba(255,255,255,0.3)"
-        value={search}
-        onChangeText={setSearch}
-      />
+      <View style={styles.content}>
+        <View style={styles.titleRow}>
+          <Text style={styles.title}>Faculty</Text>
 
-      <FlatList
-        data={filtered}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
-        refreshing={loading}
-        onRefresh={fetchFaculty}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.row}
-            onPress={() => router.push(`/admin/faculty/${item.id}`)}
-          >
-            <Text style={styles.name}>{item.full_name || "(No name)"}</Text>
-            <Text style={styles.chevron}>›</Text>
-          </TouchableOpacity>
-        )}
-        ListEmptyComponent={
-          !loading ? <Text style={styles.empty}>No faculty found</Text> : null
-        }
-      />
+          <View style={styles.countBadge}>
+            <Image />
 
-      <View style={styles.pagerRow}>
+            <Text style={styles.countText}>
+              {faculty.length.toLocaleString()}
+            </Text>
+          </View>
+        </View>
+
         <TouchableOpacity
-          style={[styles.pagerBtn, page === 0 && styles.pagerBtnDisabled]}
-          onPress={() => setPage((p) => Math.max(0, p - 1))}
-          disabled={page === 0}
+          style={styles.addButton}
+          onPress={() => router.push("/admin/faculty/add")}
+          activeOpacity={0.8}
         >
-          <Text style={styles.pagerBtnText}>← Previous</Text>
+          <Image />
+
+          <Text style={styles.addButtonText}>Add faculty</Text>
         </TouchableOpacity>
-        <Text style={styles.pagerLabel}>
-          {totalCount === 0
-            ? "0"
-            : `${page * PAGE_SIZE + 1}–${Math.min((page + 1) * PAGE_SIZE, totalCount)}`}{" "}
-          of {totalCount}
-        </Text>
-        <TouchableOpacity
-          style={[
-            styles.pagerBtn,
-            (page + 1) * PAGE_SIZE >= totalCount && styles.pagerBtnDisabled,
-          ]}
-          onPress={() => setPage((p) => p + 1)}
-          disabled={(page + 1) * PAGE_SIZE >= totalCount}
-        >
-          <Text style={styles.pagerBtnText}>Next →</Text>
-        </TouchableOpacity>
+
+        <View style={styles.searchContainer}>
+          <Image />
+
+          <TextInput
+            style={styles.search}
+            placeholder="Search this page by name..."
+            placeholderTextColor="#B5B8C7"
+            value={search}
+            onChangeText={setSearch}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+        </View>
+
+        <FlatList
+          data={filtered}
+          keyExtractor={(item) => item.id}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.list}
+          refreshing={loading}
+          onRefresh={fetchFaculty}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={styles.studentCard}
+              onPress={() => router.push(`/admin/faculty/${item.id}`)}
+              activeOpacity={0.75}
+            >
+              <View style={styles.studentInfo}>
+                <Text style={styles.name}>{item.full_name || "(No name)"}</Text>
+
+                <Text style={styles.idText}>ID: {item.full_name || "—"}</Text>
+              </View>
+
+              <Image />
+            </TouchableOpacity>
+          )}
+          ListEmptyComponent={
+            !loading ? (
+              <Text style={styles.empty}>No students found</Text>
+            ) : null
+          }
+        />
       </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0D0D0D" },
+  container: {
+    flex: 1,
+    backgroundColor: "#FBFBFF",
+  },
+
   header: {
+    marginTop: 30,
+    height: 74,
+    paddingHorizontal: 30,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F2F7",
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
-    alignItems: "flex-start",
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 12,
   },
-  title: { color: "#fff", fontSize: 26, fontWeight: "800" },
-  subtitle: { color: "rgba(255,255,255,0.4)", fontSize: 13, marginTop: 2 },
-  addLink: { color: "#C8F04D", fontSize: 13, fontWeight: "700", marginTop: 6 },
+
+  logoContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 11,
+  },
+
+  logoPlaceholder: {
+    width: 48,
+    height: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFFFFF",
+  },
+
+  logo: {
+    width: 48,
+    height: 48,
+  },
+
+  content: {
+    flex: 1,
+    paddingHorizontal: 30,
+  },
+
+  titleRow: {
+    marginTop: 38,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+
+  title: {
+    fontSize: 32,
+    fontWeight: "700",
+    color: "#111525",
+    fontFamily: "Inter_400Regular",
+  },
+
+  countBadge: {
+    height: 43,
+    paddingHorizontal: 17,
+    borderRadius: 23,
+    backgroundColor: "#E8EBFF",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+
+  countText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: BLUE,
+    fontFamily: "Inter_400Regular",
+  },
+
+  addButton: {
+    height: 73,
+    marginTop: 32,
+    borderRadius: 17,
+    backgroundColor: BLUE,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    shadowColor: BLUE,
+    shadowOffset: {
+      width: 0,
+      height: 5,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+
+  addButtonText: {
+    fontSize: 19,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    fontFamily: "Inter_400Regular",
+  },
+
+  searchContainer: {
+    height: 73,
+    marginTop: 24,
+    paddingHorizontal: 20,
+    borderRadius: 17,
+    backgroundColor: "#E8EBFF",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+
   search: {
-    marginHorizontal: 24,
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    color: "#fff",
-    fontSize: 14,
+    flex: 1,
+    height: "100%",
+    paddingHorizontal: 0,
+    color: "#171C2E",
+    fontSize: 17,
+    fontFamily: "Inter_400Regular",
+  },
+
+  list: {
+    paddingTop: 24,
+    paddingBottom: 35,
+  },
+
+  studentCard: {
+    minHeight: 116,
     marginBottom: 12,
-  },
-  list: { paddingHorizontal: 24, paddingBottom: 8 },
-  row: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 8,
-  },
-  name: { color: "#fff", fontSize: 15, fontWeight: "600" },
-  chevron: { color: "rgba(255,255,255,0.3)", fontSize: 22 },
-  empty: { color: "rgba(255,255,255,0.3)", textAlign: "center", marginTop: 40 },
-  pagerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
     paddingHorizontal: 24,
-    paddingVertical: 12,
+    paddingVertical: 20,
+    borderRadius: 18,
+    backgroundColor: "#FFFFFF",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderColor: "#F1F1F6",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.04,
+    shadowRadius: 5,
+    elevation: 1,
   },
-  pagerBtn: {
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+
+  studentInfo: {
+    flex: 1,
   },
-  pagerBtnDisabled: { opacity: 0.3 },
-  pagerBtnText: { color: "#fff", fontSize: 13, fontWeight: "600" },
-  pagerLabel: { color: "rgba(255,255,255,0.4)", fontSize: 12 },
+
+  name: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#111525",
+    fontFamily: "Inter_400Regular",
+  },
+
+  idText: {
+    marginTop: 8,
+    fontSize: 16,
+    color: "#737689",
+    fontFamily: "Inter_400Regular",
+  },
+
+  empty: {
+    marginTop: 40,
+    textAlign: "center",
+    color: "#A5A8B7",
+    fontSize: 15,
+    fontFamily: "Inter_400Regular",
+  },
+
+  bottomNav: {
+    height: 88,
+    paddingHorizontal: 15,
+    backgroundColor: "#FFFFFF",
+    borderTopWidth: 1,
+    borderTopColor: "#F0F1F6",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.03,
+    shadowRadius: 5,
+    elevation: 5,
+  },
+
+  navItem: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 3,
+  },
+
+  navText: {
+    fontSize: 14,
+    color: "#303143",
+    fontFamily: "Inter_400Regular",
+  },
+
+  activeNavText: {
+    color: BLUE,
+  },
 });
