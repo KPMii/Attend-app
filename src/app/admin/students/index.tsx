@@ -1,5 +1,5 @@
-import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 import {
   FlatList,
   Image,
@@ -28,6 +28,7 @@ export default function StudentList() {
   const [students, setStudents] = useState<Student[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+
   const fetchStudents = async () => {
     setLoading(true);
 
@@ -41,6 +42,8 @@ export default function StudentList() {
 
     setLoading(false);
   };
+
+  useFocusEffect(useCallback(() => {fetchStudents()}, []))
 
   useEffect(() => {
     fetchStudents();
@@ -224,10 +227,10 @@ const styles = StyleSheet.create({
   },
 
   studentCard: {
-    minHeight: 116,
+    minHeight: 16,
     marginBottom: 12,
     paddingHorizontal: 24,
-    paddingVertical: 20,
+    paddingVertical: 18,
     borderRadius: 18,
     backgroundColor: "#FFFFFF",
     flexDirection: "row",
@@ -250,15 +253,14 @@ const styles = StyleSheet.create({
   },
 
   name: {
-    fontSize: 20,
-    fontWeight: "700",
+    fontSize: 14,
+    fontWeight: "bold",
     color: "#111525",
     fontFamily: "Inter_400Regular",
   },
 
   idText: {
-    marginTop: 8,
-    fontSize: 16,
+    fontSize: 11,
     color: "#737689",
     fontFamily: "Inter_400Regular",
   },

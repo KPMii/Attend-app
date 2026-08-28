@@ -1,6 +1,9 @@
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
+  Image,
+  KeyboardAvoidingView,
+  Platform,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -13,6 +16,16 @@ import {
 import { logAction } from "../../../lib/audit";
 import { supabase } from "../../../lib/supabase";
 
+const BLUE = "#305CDE";
+const FADED_BLUE = "#F0F3FF";
+const BG = "#FBFBFF";
+const WHITE = "#FFFFFF";
+const INK = "#171C2E";
+const MUTED = "#85899B";
+const BORDER = "#F1F1F6";
+const RED_FILL = "#FFD8D4";
+const RED = "#D90000";
+
 export default function FacultyDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -20,6 +33,8 @@ export default function FacultyDetail() {
   const [fullName, setFullName] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  const [showPassword, setShowPassword] = useState(false)
 
   const [newPassword, setNewPassword] = useState("");
   const [resetting, setResetting] = useState(false);
@@ -125,184 +140,425 @@ export default function FacultyDetail() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Stack.Screen options={{ title: "Faculty Detail" }} />
-      <StatusBar barStyle="light-content" />
-      <ScrollView contentContainerStyle={styles.scroll}>
-        {error ? <Text style={styles.errorBanner}>{error}</Text> : null}
-
-        <Text style={styles.sectionTitle}>Edit Profile</Text>
-        <View style={styles.card}>
-          <Text style={styles.label}>Full Name</Text>
-          <TextInput
-            style={styles.input}
-            value={fullName}
-            onChangeText={setFullName}
-            placeholderTextColor="rgba(255,255,255,0.25)"
-          />
-
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={styles.flex}
+      >
+        <View style={styles.header}>
           <TouchableOpacity
-            style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
-            onPress={handleSave}
-            disabled={saving}
+            style={styles.backButton}
+            onPress={() => router.back()}
+            activeOpacity={0.7}
           >
-            <Text style={styles.saveBtnText}>
-              {saving ? "Saving..." : saved ? "✓ Saved" : "Save Changes"}
-            </Text>
+            <Image style={[{width: 24, height: 24}]} source={require("../../assets/icons/back.png")}/>
           </TouchableOpacity>
+          <Text style={styles.headerTitle}>Faculty Detail</Text>
+          <View style={styles.headerSpacer} />
         </View>
 
-        <Text style={styles.sectionTitle}>Reset Password</Text>
-        <View style={styles.card}>
-          <Text style={styles.label}>New Password</Text>
-          <TextInput
-            style={styles.input}
-            value={newPassword}
-            onChangeText={setNewPassword}
-            placeholder="At least 6 characters"
-            placeholderTextColor="rgba(255,255,255,0.25)"
-            secureTextEntry
-          />
-          <TouchableOpacity
-            style={[styles.resetBtn, resetting && styles.saveBtnDisabled]}
-            onPress={handleResetPassword}
-            disabled={resetting}
-          >
-            <Text style={styles.resetBtnText}>
-              {resetting
-                ? "Resetting..."
-                : resetDone
-                  ? "✓ Password Reset"
-                  : "Reset Password"}
-            </Text>
-          </TouchableOpacity>
-        </View>
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {error ? (
+            <View style={styles.messageBoxError}>
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          ) : null}
 
-        <Text style={styles.sectionTitle}>Danger Zone</Text>
-        <View style={styles.card}>
-          {!showDeleteConfirm ? (
-            <TouchableOpacity
-              style={styles.deleteBtn}
-              onPress={() => setShowDeleteConfirm(true)}
-            >
-              <Text style={styles.deleteBtnText}>Delete Account</Text>
-            </TouchableOpacity>
-          ) : (
-            <View style={{ gap: 8 }}>
-              <Text style={styles.confirmText}>
-                This permanently deletes {fullName}'s account. This cannot be
-                undone.
-              </Text>
-              <View style={{ flexDirection: "row", gap: 8 }}>
-                <TouchableOpacity
-                  style={[
-                    styles.deleteBtn,
-                    { flex: 1 },
-                    deleting && styles.saveBtnDisabled,
-                  ]}
-                  onPress={handleDelete}
-                  disabled={deleting}
-                >
-                  <Text style={styles.deleteBtnText}>
-                    {deleting ? "Deleting..." : "Confirm Delete"}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.cancelBtn}
-                  onPress={() => setShowDeleteConfirm(false)}
-                >
-                  <Text style={styles.cancelBtnText}>Cancel</Text>
-                </TouchableOpacity>
+          <Text style={styles.title}>Faculty Profile</Text>
+
+          <Text style={styles.subtitle}>
+            Manage this faculty member's account details.
+          </Text>
+
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionIconBox}>
+                <Image
+                  source={require("../../assets/icons/Profile.png")}
+                  style={styles.sectionIcon}
+                />
+              </View>
+              <Text style={styles.sectionHeading}>Profile</Text>
+            </View>
+
+            <View style={styles.field}>
+              <Text style={styles.label}>FULL NAME</Text>
+
+              <View style={styles.inputContainer}>
+                <Image />
+
+                <TextInput
+                  style={styles.input}
+                  value={fullName}
+                  onChangeText={setFullName}
+                  placeholder="Faculty full name"
+                  placeholderTextColor="#AEB2C2"
+                  autoCapitalize="words"
+                />
               </View>
             </View>
-          )}
-        </View>
-      </ScrollView>
+
+            <TouchableOpacity
+              style={[styles.primaryButton, saving && styles.buttonDisabled]}
+              onPress={handleSave}
+              disabled={saving}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.primaryButtonText}>
+                {saving ? "Saving..." : saved ? "Saved" : "Save Changes"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionIconBox}>
+                <Image
+                  source={require("../../assets/icons/keyLock.png")}
+                  style={styles.sectionIcon}
+                />
+              </View>
+              <Text style={styles.sectionHeading}>Security</Text>
+            </View>
+
+            <View style={styles.field}>
+              <Text style={styles.label}>NEW PASSWORD</Text>
+
+              <View style={styles.inputContainer}>
+
+                <TextInput
+                  style={styles.input}
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                  placeholder={showPassword ? "At least 6 characters" : "••••••••"}
+                  placeholderTextColor="#AEB2C2"
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+
+                <TouchableOpacity
+                  style={styles.eyeButton}
+                  onPress={() => setShowPassword(!showPassword)}
+                  activeOpacity={0.7}
+                  >
+                  <Image
+                    source={require("../../assets/icons/eye.png")}
+                     style={styles.eyeIcon}
+                  />
+                </TouchableOpacity>
+                
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.primaryButton, resetting && styles.buttonDisabled]}
+              onPress={handleResetPassword}
+              disabled={resetting}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.primaryButtonText}>
+                {resetting
+                  ? "Resetting..."
+                  : resetDone
+                    ? "Password Reset"
+                    : "Reset Password"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.sectionCard}>
+
+            {!showDeleteConfirm ? (
+              <TouchableOpacity
+                style={styles.dangerButton}
+                onPress={() => setShowDeleteConfirm(true)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.dangerButtonText}>Delete Account</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.confirmBlock}>
+                <Text style={styles.confirmText}>
+                  This permanently deletes {fullName}'s account. This cannot be
+                  undone.
+                </Text>
+
+                <View style={styles.confirmRow}>
+                  <TouchableOpacity
+                    style={[
+                      styles.dangerButton,
+                      styles.confirmDeleteButton,
+                      deleting && styles.buttonDisabled,
+                    ]}
+                    onPress={handleDelete}
+                    disabled={deleting}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.dangerButtonText}>
+                      {deleting ? "Deleting..." : "Confirm Delete"}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.cancelButton, styles.confirmCancelButton]}
+                    onPress={() => setShowDeleteConfirm(false)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0D0D0D" },
-  scroll: { padding: 24, gap: 12, paddingBottom: 48 },
-  errorBanner: {
-    backgroundColor: "rgba(242,129,107,0.1)",
-    borderWidth: 1,
-    borderColor: "rgba(242,129,107,0.3)",
-    borderRadius: 12,
-    padding: 12,
-    color: "#F2816B",
-    fontSize: 13,
+  container: {
+    flex: 1,
+    backgroundColor: BG,
   },
-  sectionTitle: {
-    color: "rgba(255,255,255,0.5)",
-    fontSize: 12,
+
+  flex: {
+    flex: 1,
+  },
+
+  header: {
+    height: 72,
+    paddingHorizontal: 24,
+    backgroundColor: WHITE,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+    marginTop: 30,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+
+  backButton: {
+    width: 42,
+    height: 42,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  headerTitle: {
+    fontSize: 18,
     fontWeight: "700",
-    letterSpacing: 0.5,
-    textTransform: "uppercase",
-    marginTop: 16,
+    color: INK,
+    fontFamily: "Inter_400Regular",
   },
-  card: {
-    backgroundColor: "rgba(255,255,255,0.04)",
-    borderRadius: 16,
-    padding: 16,
+
+  headerSpacer: {
+    width: 42,
+  },
+
+  scroll: {
+    paddingHorizontal: 30,
+    paddingTop: 34,
+    paddingBottom: 48,
+  },
+
+  messageBoxError: {
+    paddingHorizontal: 13,
+    paddingVertical: 11,
+    borderRadius: 10,
+    backgroundColor: "#FFF0F0",
+    marginBottom: 18,
+  },
+
+  errorText: {
+    color: "#C93636",
+    fontSize: 13,
+    lineHeight: 18,
+  },
+
+  title: {
+    fontSize: 31,
+    fontWeight: "700",
+    color: "#111525",
+    fontFamily: "Inter_400Regular",
+  },
+
+  subtitle: {
+    marginTop: 7,
+    fontSize: 15,
+    lineHeight: 22,
+    color: MUTED,
+    fontFamily: "Inter_400Regular",
+    marginBottom: 24,
+  },
+
+  sectionCard: {
+    marginBottom: 20,
+    padding: 20,
+    borderRadius: 20,
+    backgroundColor: WHITE,
+    borderWidth: 1,
+    borderColor: FADED_BLUE,
+    gap: 12,
+  },
+
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 4,
+  },
+
+  sectionIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: FADED_BLUE,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  sectionIcon: {
+    width: 14,
+    height: 19,
+  },
+
+  sectionHeading: {
+    fontSize: 17,
+    fontWeight: "800",
+    color: INK,
+    fontFamily: "Inter_400Regular",
+  },
+
+  field: {
     gap: 8,
   },
+
   label: {
-    color: "rgba(255,255,255,0.5)",
-    fontSize: 11,
+    marginLeft: 3,
+    fontSize: 12,
     fontWeight: "600",
-    textTransform: "uppercase",
-    marginTop: 6,
+    color: "#55596B",
+    fontFamily: "Inter_400Regular",
   },
+
+  inputContainer: {
+    height: 53,
+    paddingHorizontal: 15,
+    borderRadius: 12,
+    backgroundColor: FADED_BLUE,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+
   input: {
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: "#fff",
-    fontSize: 14,
-  },
-  saveBtn: {
-    backgroundColor: "#C8F04D",
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: "center",
-    marginTop: 12,
-  },
-  saveBtnDisabled: { opacity: 0.5 },
-  saveBtnText: { color: "#0D0D0D", fontSize: 14, fontWeight: "800" },
-  resetBtn: {
-    backgroundColor: "rgba(255,255,255,0.1)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: "center",
-    marginTop: 12,
-  },
-  resetBtnText: { color: "#fff", fontSize: 14, fontWeight: "700" },
-  deleteBtn: {
-    backgroundColor: "rgba(242,129,107,0.15)",
-    borderWidth: 1,
-    borderColor: "rgba(242,129,107,0.4)",
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  deleteBtnText: { color: "#F2816B", fontSize: 14, fontWeight: "700" },
-  cancelBtn: {
     flex: 1,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderRadius: 12,
-    paddingVertical: 14,
+    height: "100%",
+    paddingHorizontal: 0,
+    color: INK,
+    fontSize: 15,
+    fontFamily: "Inter_400Regular",
+  },
+
+  primaryButton: {
+    height: 55,
+    marginTop: 4,
+    borderRadius: 13,
+    backgroundColor: BLUE,
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    shadowColor: BLUE,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 7,
+    elevation: 4,
   },
-  cancelBtnText: {
-    color: "rgba(255,255,255,0.6)",
-    fontSize: 14,
+
+  buttonDisabled: {
+    opacity: 0.4,
+  },
+
+  primaryButtonText: {
+    color: WHITE,
+    fontSize: 16,
     fontWeight: "700",
+    fontFamily: "Inter_400Regular",
   },
-  confirmText: { color: "rgba(255,255,255,0.6)", fontSize: 13, lineHeight: 18 },
+
+  eyeButton: {
+    width: 30,
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  eyeIcon: {
+    width: 20,
+    height: 14,
+    tintColor: "#8A8FA0",
+  },
+
+  dangerButton: {
+    height: 55,
+    borderRadius: 13,
+    backgroundColor: RED_FILL,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  dangerButtonText: {
+    color: RED,
+    fontSize: 15,
+    fontWeight: "700",
+    fontFamily: "Inter_400Regular",
+  },
+
+  cancelButton: {
+    height: 55,
+    borderRadius: 13,
+    backgroundColor: FADED_BLUE,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  cancelButtonText: {
+    color: INK,
+    fontSize: 15,
+    fontWeight: "700",
+    fontFamily: "Inter_400Regular",
+  },
+
+  confirmBlock: {
+    gap: 12,
+  },
+
+  confirmRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+
+  confirmDeleteButton: {
+    flex: 1,
+  },
+
+  confirmCancelButton: {
+    flex: 1,
+  },
+
+  confirmText: {
+    color: MUTED,
+    fontSize: 13,
+    lineHeight: 19,
+  },
 });

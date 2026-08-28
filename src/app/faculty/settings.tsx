@@ -14,6 +14,14 @@ import ChangePasswordForm from "../../components/changePasswordForm";
 import EditDisplayName from "../../components/editDisplayName";
 import { logoutAndRedirect } from "../../lib/navigation";
 
+const BLUE = "#305CDE";
+const FADED_BLUE = "#F0F3FF";
+const BG = "#FBFBFF";
+const WHITE = "#FFFFFF";
+const INK = "#171C2E";
+const MUTED = "#85899B";
+const BORDER = "#F1F1F6";
+
 export default function FacultySettings() {
   const fullName = useAuthStore((s) => s.fullName);
   const role = useAuthStore((s) =>
@@ -25,33 +33,27 @@ export default function FacultySettings() {
     <SafeAreaView style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      <StatusBar barStyle="dark-content" backgroundColor="#FBFBFF" />
+      <StatusBar barStyle="dark-content" backgroundColor={BG} />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
       >
-        <View style={styles.header}>
-          <View style={styles.logoContainer}>
-            <View style={styles.logoIconContainer}>
-              <Image
-                source={require("../assets/logo.png")}
-                style={styles.logo}
-              />
-            </View>
-          </View>
-        </View>
 
         <View style={styles.titlePill}>
           <Text style={styles.titleName}>{fullName}</Text>
-          <Text style={styles.titleRole}>Role: {role}</Text>
+          <Text style={styles.titleOther}>Role: {role}</Text>
+          { role === "Student Council" ? <Text style={styles.titleOther}>Role: {schoolIdNo}</Text> : ""}
         </View>
 
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
-            <Image />
-
-            <View></View>
+            <View style={styles.sectionIconBox}>
+              <Image
+                source={require("../assets/icons/Profile.png")}
+                style={styles.sectionIcon}
+              />
+            </View>
             <Text style={styles.sectionHeading}>Profile</Text>
           </View>
 
@@ -61,12 +63,17 @@ export default function FacultySettings() {
 
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
-            <Image />
-
+            <View style={styles.sectionIconBox}>
+              <Image
+                source={require("../assets/icons/keyLock.png")}
+                style={styles.sectionIcon}
+              />
+            </View>
             <Text style={styles.sectionHeading}>Security</Text>
           </View>
           <ChangePasswordForm />
         </View>
+
         <View style={styles.hiddenInfo}>
           <Text>{fullName ?? "Faculty user"}</Text>
           <Text>{role ?? "faculty"}</Text>
@@ -79,8 +86,6 @@ export default function FacultySettings() {
             activeOpacity={0.75}
             onPress={logoutAndRedirect}
           >
-            <Image />
-
             <Text style={styles.logoutText}>Log Out</Text>
           </TouchableOpacity>
         </View>
@@ -92,34 +97,12 @@ export default function FacultySettings() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FBFBFF",
+    backgroundColor: BG,
   },
 
   scroll: {
+    marginTop: 36,
     paddingBottom: 40,
-  },
-
-  header: {
-    height: 64,
-    paddingHorizontal: 20,
-    backgroundColor: "#FFFFFF",
-    marginTop: 30,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F1F1F7",
-    justifyContent: "center",
-  },
-
-  logoContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-
-  logoIconContainer: {
-    width: 30,
-    height: 34,
-    alignItems: "center",
-    justifyContent: "center",
   },
 
   titlePill: {
@@ -127,7 +110,7 @@ const styles = StyleSheet.create({
     marginTop: 24,
     height: 86,
     borderRadius: 24,
-    backgroundColor: "#D8E3FB",
+    backgroundColor: FADED_BLUE,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -138,17 +121,17 @@ const styles = StyleSheet.create({
     height: 48,
   },
 
-  titleRole: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#171C2E",
+  titleOther: {
+    fontSize: 11,
+    fontWeight: "semibold",
+    color: INK,
     fontFamily: "Inter_400Regular",
   },
 
   titleName: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#171C2E",
+    color: INK,
     fontFamily: "Inter_400Regular",
   },
 
@@ -157,28 +140,53 @@ const styles = StyleSheet.create({
     marginTop: 24,
     padding: 20,
     borderRadius: 20,
-    backgroundColor: "#D8E3FB",
+    backgroundColor: WHITE,
+    borderWidth: 1,
+    borderColor: BORDER,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 3,
+    },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+    gap: 12,
   },
 
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    marginBottom: 20,
+    gap: 10,
+    marginBottom: 8,
+  },
+
+  sectionIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: FADED_BLUE,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  sectionIcon: {
+    width: 14,
+    height: 18,
   },
 
   sectionHeading: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#000",
+    fontSize: 17,
+    fontWeight: "800",
+    color: INK,
     fontFamily: "Inter_400Regular",
   },
 
   fieldLabel: {
-    marginLeft: 4,
-    marginBottom: 7,
+    marginLeft: 3,
     fontSize: 12,
-    color: "#555967",
+    fontWeight: "600",
+    color: "#55596B",
     fontFamily: "Inter_400Regular",
   },
 
@@ -188,7 +196,8 @@ const styles = StyleSheet.create({
 
   logoutContainer: {
     marginHorizontal: 20,
-    marginTop: 40,
+    marginTop: 16,
+    marginBottom: 56,
     paddingTop: 15,
     borderTopWidth: 1,
     borderTopColor: "#fff",

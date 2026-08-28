@@ -481,7 +481,6 @@ export default function QRGenerator() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Create Session</Text>
           <View style={[styles.syncPill, { borderColor: syncColor + "55" }]}>
             <Text style={[styles.syncText, { color: syncColor }]}>
               {syncLabel}
@@ -777,12 +776,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: BackgroundColor },
   scroll: { paddingHorizontal: 24, paddingBottom: 48 },
   header: { paddingTop: 32, paddingBottom: 8, gap: 4 },
-  headerTitle: {
-    color: Black,
-    fontSize: 20,
-    fontWeight: "bold",
-    letterSpacing: -1,
-  },
   headerSub: { color: "rgba(255,255,255,0.4)", fontSize: 14 },
   InitialTitle: {
     color: Black,

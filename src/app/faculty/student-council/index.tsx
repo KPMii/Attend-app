@@ -44,13 +44,6 @@ export default function StudentCouncilHome() {
         <StatusBar barStyle="light-content" backgroundColor="#4361EE" />
 
         <View style={styles.header}>
-          <View style={styles.logoBox}>
-            <Image
-              source={require("../../../app/assets/logo.png")}
-              style={styles.logoEmoji}
-            />
-          </View>
-
           <Text style={styles.headerTitle}>
             {isStudentCouncil ? "Student Council" : "Faculty Home"}
           </Text>
@@ -162,30 +155,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 48,
   },
-  logoBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: WHITE,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 8,
-    marginBottom: 12,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-  logoEmoji: {
-    width: 38,
-    height: 38,
-  },
   headerTitle: {
     color: WHITE,
     fontSize: 26,
     fontWeight: "800",
     textAlign: "center",
+    marginTop: 72,
     marginBottom: 20,
   },
   greetingCard: {

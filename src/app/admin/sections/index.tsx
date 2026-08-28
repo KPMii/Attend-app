@@ -1,5 +1,5 @@
-import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 import {
   FlatList,
   SafeAreaView,
@@ -100,10 +100,23 @@ export default function AdminSections() {
     }
   };
 
-  const removeSection = async (id: string) => {
-    await supabase.from("sections").delete().eq("id", id);
-    fetchSections();
-  };
+  const loadSections = async () => {
+    const {data, error} = await supabase
+      .from("sections")
+      .select("*")
+
+      if(error){
+        console.error()
+      }
+
+    setSections(data ?? []);
+  }
+
+  useFocusEffect(
+    useCallback(() => {
+      loadSections()
+    }, [])
+  )
 
   return (
     <SafeAreaView style={styles.container}>

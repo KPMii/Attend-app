@@ -70,7 +70,13 @@ export default function AddFaculty() {
             onPress={() => router.back()}
             activeOpacity={0.7}
           >
-            <Image />
+            <TouchableOpacity
+                        style={styles.backButton}
+                        onPress={() => router.back()}
+                        activeOpacity={0.7}
+                      >
+                        <Image style={[{width: 24, height: 24}]} source={require("../../assets/icons/back.png")}/>
+                      </TouchableOpacity>
           </TouchableOpacity>
 
           <Text style={styles.headerTitle}>Add Faculty</Text>
@@ -95,10 +101,7 @@ export default function AddFaculty() {
                   placeholder="e.g. 2024-00142"
                   placeholderTextColor="#AEB2C2"
                   value={email}
-                  onChangeText={(t) =>
-                    setEmail(t.replace(/[^A-Za-z0-9]/g, "").slice(0, 12))
-                  }
-                  autoCapitalize="characters"
+                  onChangeText={setEmail}
                   maxLength={12}
                 />
               </View>
@@ -153,7 +156,7 @@ export default function AddFaculty() {
                 <Image />
 
                 <Text style={styles.successText}>
-                  Student account created successfully!
+                  Faculty account created successfully!
                 </Text>
               </View>
             )}
@@ -170,7 +173,7 @@ export default function AddFaculty() {
               <Image />
 
               <Text style={styles.createButtonText}>
-                {loading ? "Creating..." : "Create Student"}
+                {loading ? "Creating..." : "Create Faculty"}
               </Text>
             </TouchableOpacity>
           </View>

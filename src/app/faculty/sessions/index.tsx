@@ -291,7 +291,7 @@ const styles = StyleSheet.create({
   },
 
   sessionCard: {
-    minHeight: 108,
+    minHeight: 16,
     marginBottom: 12,
     paddingHorizontal: 21,
     paddingVertical: 19,
@@ -345,10 +345,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
 
-  /* ================= META ================= */
-
   metaRow: {
-    marginTop: 9,
+    marginTop: 2,
     flexDirection: "row",
     alignItems: "center",
     gap: 5,

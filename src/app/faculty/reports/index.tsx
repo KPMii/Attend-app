@@ -26,7 +26,6 @@ type SessionRow = {
 type ExportFormat = "pdf" | "csv";
 
 export default function Reports() {
-  const hasPermission = useAuthStore((s) => s.hasPermission);
   const role = useAuthStore((s) => s.role);
   const userId = useAuthStore((s) => s.userId);
 

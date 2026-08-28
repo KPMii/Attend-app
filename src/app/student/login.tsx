@@ -1,5 +1,5 @@
 ﻿import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, } from "react";
 import {
   Image,
   KeyboardAvoidingView,
@@ -114,7 +114,7 @@ export default function StudentLogin() {
                 source={require("../assets/icons/keyLock.png")}
                 style={styles.passwordIcon}
                 resizeMode="contain"
-              />
+              /> 
               <TextInput
                 style={styles.passwordInput}
                 placeholder={showPassword ? "123456" : "••••••••"}

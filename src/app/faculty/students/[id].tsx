@@ -1,14 +1,14 @@
-import { Ionicons } from "@expo/vector-icons";
-import { Stack, useLocalSearchParams } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
+  Image,
   SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import { PAGE_SIZE, getRange } from "../../../lib/pagination";
 import { supabase } from "../../../lib/supabase";
@@ -24,8 +24,15 @@ const BLUE = "#305CDE";
 const FADED_BLUE = "#F0F3FF";
 const GREEN = "#6D9F24";
 const AMBER = "#B07A18";
+const BLACK = "#000"
+const BG = "#FBFBFF";
+const WHITE = "#FFFFFF";
+const INK = "#171C2E";
+const BORDER = "#F1F1F6";
 
 export default function StudentDetailReadOnly() {
+  const router = useRouter();
+
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const [fullName, setFullName] = useState("");
@@ -97,16 +104,33 @@ export default function StudentDetailReadOnly() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Stack.Screen options={{ title: "Student Detail" }} />
-      <StatusBar barStyle="dark-content" />
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scroll}
-      >
-        <View style={styles.headerCard}>
+          <Stack.Screen options={{ title: "Student Detail" }} />
+          <StatusBar barStyle="dark-content" />
+
+          <View style={styles.header}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => router.back()}
+              activeOpacity={0.7}
+            >
+              <Image
+                style={{ width: 24, height: 24 }}
+                source={require("../../assets/icons/back.png")}
+              />
+            </TouchableOpacity>
+
+            <Text style={styles.headerTitle}>Student Profile</Text>
+
+            <View style={styles.headerSpacer} />
+          </View>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scroll}
+          >
+
+        <View style={styles.profileCard}>
           <Text style={styles.studentName}>{fullName || "—"}</Text>
           <View style={styles.metaRow}>
-            <Ionicons name="card-outline" size={15} color="#85899B" />
             <Text style={styles.meta}>School ID: {schoolIdNo || "—"}</Text>
           </View>
           <Text style={styles.hint}>
@@ -221,15 +245,42 @@ export default function StudentDetailReadOnly() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F9F9FF" },
-  scroll: { padding: 20, paddingBottom: 40 },
+  container: { flex: 1, backgroundColor: BG },
+  scroll: { padding: 20, gap: 12, paddingBottom: 40 },
+  header: {
+    height: 72,
+    paddingHorizontal: 24,
+    backgroundColor: WHITE,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+    marginTop: 40,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
 
-  headerCard: {
+  backButton: {
+    width: 42,
+    height: 42,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: INK,
+    fontFamily: "Inter_400Regular",
+  },
+
+  headerSpacer: {
+    width: 42,
+  },
+  profileCard: {
     backgroundColor: "#FFFFFF",
-    marginTop: 30,
+    marginTop: 24,
     borderRadius: 16,
     padding: 16,
-    marginBottom: 12,
     borderWidth: 1,
     borderColor: "#ECECE7",
   },

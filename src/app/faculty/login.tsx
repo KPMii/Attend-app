@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useAuthStore } from "../../../stores/authStore";
 import { facultyLogin } from "../../lib/auth";
 import type { Role } from "../../lib/permissions";
 import {
@@ -19,7 +20,6 @@ import {
   recordAttempt,
 } from "../../lib/rateLimit";
 import { supabase } from "../../lib/supabase";
-import { useAuthStore } from "../../../stores/authStore";
 
 export default function FacultyLogin() {
   const router = useRouter();
@@ -171,7 +171,7 @@ export default function FacultyLogin() {
             style={styles.facultySignButton}
             onPress={() => router.push("/student/login")}
           >
-            <Text style={styles.facultySignText}>Sign in as Faculty</Text>
+            <Text style={styles.facultySignText}>Sign in as Student</Text>
             <Image
               style={styles.facultySignIcon}
               source={require("../assets/icons/FacultyContact.png")}

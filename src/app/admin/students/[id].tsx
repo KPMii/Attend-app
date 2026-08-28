@@ -1,6 +1,8 @@
+import { FunctionsHttpError } from "@supabase/supabase-js";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
+  Image,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -14,6 +16,17 @@ import { useAuthStore } from "../../../../stores/authStore";
 import { logAction } from "../../../lib/audit";
 import { PAGE_SIZE, getRange } from "../../../lib/pagination";
 import { supabase } from "../../../lib/supabase";
+
+const BLUE = "#305CDE";
+const BLACK = "#000"
+const FADED_BLUE = "#F0F3FF";
+const BG = "#FBFBFF";
+const WHITE = "#FFFFFF";
+const INK = "#171C2E";
+const MUTED = "#85899B";
+const BORDER = "#F1F1F6";
+const RED_FILL = "#FFD8D4";
+const RED = "#D90000";
 
 type AttendanceRecord = {
   id: string;
@@ -32,6 +45,8 @@ export default function StudentDetail() {
   const [currentRole, setCurrentRole] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  const [showPassword, setShowPassword] = useState(false)
 
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [loadingRecords, setLoadingRecords] = useState(true);
@@ -161,7 +176,20 @@ export default function StudentDetail() {
     setDeleting(false);
 
     if (fnError || data?.error) {
-      setError(data?.error ?? "Failed to delete account");
+      let message: string = data?.error ?? "Failed to delete account";
+      if (fnError && !data?.error) {
+        try {
+          if (fnError instanceof FunctionsHttpError) {
+            const ctx = (await fnError.context.json()) as { error?: string };
+            if (ctx?.error) message = ctx.error;
+          } else {
+            message = fnError.message ?? message;
+          }
+        } catch {
+          // keep the generic message if the response body isn't JSON
+        }
+      }
+      setError(message);
       return;
     }
 
@@ -208,11 +236,23 @@ export default function StudentDetail() {
   return (
     <SafeAreaView style={styles.container}>
       <Stack.Screen options={{ title: "Student Detail" }} />
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="dark-content" />
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+           activeOpacity={0.7}
+        >
+          <Image style={[{width: 24, height: 24}]} source={require("../../assets/icons/back.png")}/>
+        </TouchableOpacity>
+          <Text style={styles.headerTitle}>Student Profile</Text>
+          <View style={styles.headerSpacer} />
+      </View>
       <ScrollView contentContainerStyle={styles.scroll}>
         {error ? <Text style={styles.errorBanner}>{error}</Text> : null}
 
-        <Text style={styles.sectionTitle}>Edit Profile</Text>
+        <Text style={styles.sectionMainTitle}>Edit Student</Text>
+        <Text style={styles.sectionSubtitle}>Manage profile, access and attendance records. </Text>
         <View style={styles.card}>
           <Text style={styles.label}>Full Name</Text>
           <TextInput
@@ -282,7 +322,7 @@ export default function StudentDetail() {
               <Text style={styles.sectionTitle}>Role Assignment</Text>
               <View style={[styles.card, styles.councilCard]}>
                 <Text style={styles.councilBadge}>
-                  🌟 Student Council Officer
+                  Student Council Officer
                 </Text>
                 <Text style={styles.roleDescription}>
                   This student has elevated permissions for event management and
@@ -301,14 +341,28 @@ export default function StudentDetail() {
         <Text style={styles.sectionTitle}>Reset Password</Text>
         <View style={styles.card}>
           <Text style={styles.label}>New Password</Text>
-          <TextInput
-            style={styles.input}
-            value={newPassword}
-            onChangeText={setNewPassword}
-            placeholder="At least 6 characters"
-            placeholderTextColor="rgba(255,255,255,0.25)"
-            secureTextEntry
-          />
+          <View style={styles.inputContainer}>
+  <TextInput
+    style={styles.input}
+    value={newPassword}
+    onChangeText={setNewPassword}
+    placeholder={showPassword ? "At least 6 characters" : "••••••••"}
+    placeholderTextColor="rgba(59, 49, 49, 0.25)"
+    secureTextEntry={!showPassword}
+  />
+
+  <TouchableOpacity
+    style={styles.eyeButton}
+    onPress={() => setShowPassword((prev) => !prev)}
+    activeOpacity={0.7}
+  >
+    <Image
+      source={require("../../assets/icons/eye.png")}
+      style={styles.eyeIcon}
+    />
+  </TouchableOpacity>
+</View>
+
           <TouchableOpacity
             style={[styles.resetBtn, resetting && styles.saveBtnDisabled]}
             onPress={handleResetPassword}
@@ -442,8 +496,37 @@ export default function StudentDetail() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0D0D0D" },
+  container: { flex: 1, backgroundColor: BG },
   scroll: { padding: 24, gap: 12, paddingBottom: 48 },
+  header: {
+    height: 72,
+    paddingHorizontal: 24,
+    backgroundColor: WHITE,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+    marginTop: 30,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+
+  backButton: {
+    width: 42,
+    height: 42,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: INK,
+    fontFamily: "Inter_400Regular",
+  },
+
+  headerSpacer: {
+    width: 42,
+  },
   errorBanner: {
     backgroundColor: "rgba(242,129,107,0.1)",
     borderWidth: 1,
@@ -454,64 +537,99 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   sectionTitle: {
-    color: "rgba(255,255,255,0.5)",
-    fontSize: 12,
-    fontWeight: "700",
+    color: BLACK,
+    fontSize: 14,
+    fontWeight: "bold",
     letterSpacing: 0.5,
     textTransform: "uppercase",
     marginTop: 16,
   },
+  sectionMainTitle: {
+    color: BLACK,
+    fontSize: 20,
+    fontWeight: "bold",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+    marginTop: 16,
+  },
+  sectionSubtitle: {
+    color: BLACK,
+    fontSize: 14,
+    fontWeight: "semibold",
+    letterSpacing: 0.5,
+  },
   card: {
-    backgroundColor: "rgba(255,255,255,0.04)",
+    backgroundColor: WHITE,
+    borderColor: FADED_BLUE,
+    borderWidth: 1,
     borderRadius: 16,
     padding: 16,
     gap: 8,
   },
   label: {
-    color: "rgba(255,255,255,0.5)",
+    color: BLACK,
     fontSize: 11,
     fontWeight: "600",
     textTransform: "uppercase",
     marginTop: 6,
   },
+  inputContainer: {
+    position: "relative",
+    justifyContent: "center",
+  },
   input: {
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: FADED_BLUE,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: FADED_BLUE,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    color: "#fff",
+    paddingRight: 45, // space for eye
+    color: "#000",
     fontSize: 14,
   },
+  eyeButton: {
+    position: "absolute",
+    right: 12,
+    top: 0,
+    bottom: 0,
+    width: 30,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  eyeIcon: {
+    width: 20,
+    height: 14,
+    tintColor: "#8A8FA0",
+  },
   saveBtn: {
-    backgroundColor: "#C8F04D",
+    backgroundColor: BLUE,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: "center",
     marginTop: 12,
   },
   saveBtnDisabled: { opacity: 0.5 },
-  saveBtnText: { color: "#0D0D0D", fontSize: 14, fontWeight: "800" },
+  saveBtnText: { color: WHITE , fontSize: 14, fontWeight: "800" },
   roleDescription: {
-    color: "rgba(255,255,255,0.5)",
+    color: "#55596B",
     fontSize: 13,
     lineHeight: 18,
   },
   promoteBtn: {
-    backgroundColor: "#C8F04D",
+    backgroundColor: BLUE,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: "center",
   },
-  promoteBtnText: { color: "#0D0D0D", fontSize: 14, fontWeight: "800" },
+  promoteBtnText: { color: WHITE, fontSize: 14, fontWeight: "800" },
   councilCard: {
-    backgroundColor: "rgba(200,240,77,0.06)",
+    backgroundColor: WHITE,
     borderWidth: 1,
-    borderColor: "rgba(200,240,77,0.2)",
+    borderColor: BG,
   },
   councilBadge: {
-    color: "#C8F04D",
+    color: BLUE,
     fontSize: 14,
     fontWeight: "700",
   },
@@ -525,7 +643,7 @@ const styles = StyleSheet.create({
   },
   revertBtnText: { color: "#F2816B", fontSize: 14, fontWeight: "700" },
   resetBtn: {
-    backgroundColor: "rgba(255,255,255,0.1)",
+    backgroundColor: BLUE,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.2)",
     borderRadius: 12,
@@ -545,17 +663,17 @@ const styles = StyleSheet.create({
   deleteBtnText: { color: "#F2816B", fontSize: 14, fontWeight: "700" },
   cancelBtn: {
     flex: 1,
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: FADED_BLUE,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: "center",
   },
   cancelBtnText: {
-    color: "rgba(255,255,255,0.6)",
+    color: BLUE,
     fontSize: 14,
     fontWeight: "700",
   },
-  confirmText: { color: "rgba(255,255,255,0.6)", fontSize: 13, lineHeight: 18 },
+  confirmText: { color: BLACK, fontSize: 13, lineHeight: 18 },
   sectionsRow: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -563,37 +681,37 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   sectionChip: {
-    backgroundColor: "rgba(200,240,77,0.1)",
+    backgroundColor: FADED_BLUE,
     borderWidth: 1,
-    borderColor: "rgba(200,240,77,0.2)",
+    borderColor: BLUE,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 6,
   },
-  sectionChipText: { color: "#C8F04D", fontSize: 12, fontWeight: "600" },
+  sectionChipText: { color: BLUE, fontSize: 12, fontWeight: "600" },
   summaryRow: { flexDirection: "row", gap: 12 },
   summaryBox: {
     flex: 1,
-    backgroundColor: "rgba(255,255,255,0.04)",
+    backgroundColor: FADED_BLUE,
     borderRadius: 14,
     padding: 16,
     alignItems: "center",
   },
   summaryNumber: { color: "#C8F04D", fontSize: 24, fontWeight: "800" },
-  summaryLabel: { color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 4 },
+  summaryLabel: { color: BLUE, fontSize: 12, marginTop: 4 },
   recordRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.04)",
+    backgroundColor: BLACK,
     borderRadius: 12,
     padding: 14,
     marginBottom: 8,
   },
-  recordSubject: { color: "#fff", fontSize: 14, fontWeight: "600" },
-  recordMeta: { color: "rgba(255,255,255,0.4)", fontSize: 12, marginTop: 2 },
+  recordSubject: { color: BLACK, fontSize: 14, fontWeight: "600" },
+  recordMeta: { color: BLACK, fontSize: 12, marginTop: 2 },
   statusBadge: { fontSize: 13, fontWeight: "700" },
-  empty: { color: "rgba(255,255,255,0.3)", fontSize: 13, marginTop: 8 },
+  empty: { color: BLACK, fontSize: 13, marginTop: 8 },
   pagerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -601,12 +719,12 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   pagerBtn: {
-    backgroundColor: "rgba(255,255,255,0.08)",
+    backgroundColor: BLUE,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
   pagerBtnDisabled: { opacity: 0.3 },
-  pagerBtnText: { color: "#fff", fontSize: 13, fontWeight: "600" },
-  pagerLabel: { color: "rgba(255,255,255,0.4)", fontSize: 12 },
+  pagerBtnText: { color: BLACK, fontSize: 13, fontWeight: "600" },
+  pagerLabel: { color: BLACK, fontSize: 12 },
 });

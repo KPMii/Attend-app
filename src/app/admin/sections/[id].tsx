@@ -1,4 +1,4 @@
-import { Stack, useLocalSearchParams } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   SafeAreaView,
@@ -15,6 +15,8 @@ import { supabase } from "../../../lib/supabase";
 type Student = { id: string; full_name: string; school_id_no: string | null };
 
 export default function AdminSectionDetail() {
+  const route = useRouter()
+
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const [sectionName, setSectionName] = useState("");
@@ -119,6 +121,11 @@ export default function AdminSectionDetail() {
     loadRoster();
   };
 
+  const removeSection = async (id: string) => {
+    await supabase.from("sections").delete().eq("id", id);
+    route.replace("../")
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <Stack.Screen options={{ title: sectionName || "Section" }} />
@@ -139,6 +146,11 @@ export default function AdminSectionDetail() {
           />
           <TouchableOpacity style={styles.searchBtn} onPress={searchStudent}>
             <Text style={styles.searchBtnText}>Find</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => removeSection(id)}>
+            <Text>
+              Delete
+            </Text>
           </TouchableOpacity>
         </View>
 

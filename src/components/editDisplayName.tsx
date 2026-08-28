@@ -4,10 +4,14 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import { useAuthStore } from "../../stores/authStore";
 import { supabase } from "../lib/supabase";
+
+const BLUE = "#305CDE";
+const FADED_BLUE = "#F0F3FF";
+const INK = "#171C2E";
 
 export default function EditDisplayName() {
   const userId = useAuthStore((s) => s.userId);
@@ -45,7 +49,7 @@ export default function EditDisplayName() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.inputRow}>
+      <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
           value={name}
@@ -55,61 +59,72 @@ export default function EditDisplayName() {
             setError(null);
           }}
           placeholder="Your full name"
-          placeholderTextColor="#9699A7"
+          placeholderTextColor="#A9ADB8"
           autoCapitalize="words"
           autoCorrect={false}
         />
-
-        <TouchableOpacity
-          style={[
-            styles.saveButton,
-            (!name.trim() || busy) && styles.saveButtonDisabled,
-          ]}
-          onPress={handleSave}
-          disabled={!name.trim() || busy}
-          activeOpacity={0.75}
-        >
-          <Text style={styles.saveText}>{busy ? "..." : "SAVE"}</Text>
-        </TouchableOpacity>
       </View>
 
       {error && <Text style={styles.error}>{error}</Text>}
 
-      {saved && <Text style={styles.saved}>✓ Name updated</Text>}
+      {saved && <Text style={styles.saved}>Name updated</Text>}
+
+      <TouchableOpacity
+        style={[
+          styles.saveButton,
+          (!name.trim() || busy) && styles.saveButtonDisabled,
+        ]}
+        onPress={handleSave}
+        disabled={!name.trim() || busy}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.saveText}>
+          {busy ? "Saving..." : "Save Name"}
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    gap: 8,
+    gap: 10,
   },
 
-  inputRow: {
-    height: 48,
+  inputContainer: {
+    height: 53,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: "#fff",
-    borderRadius: 10,
-    overflow: "hidden",
+    backgroundColor: FADED_BLUE,
+    borderRadius: 12,
+    paddingHorizontal: 15,
+    gap: 10,
   },
 
   input: {
     flex: 1,
     height: "100%",
-    paddingHorizontal: 14,
-    color: "#000",
-    fontSize: 14,
+    paddingHorizontal: 0,
+    color: INK,
+    fontSize: 15,
+    fontFamily: "Inter_400Regular",
   },
 
   saveButton: {
-    height: "100%",
-    paddingHorizontal: 18,
-    backgroundColor: "#305CDE",
+    height: 55,
+    marginTop: 4,
+    borderRadius: 13,
+    backgroundColor: BLUE,
     alignItems: "center",
     justifyContent: "center",
+    shadowColor: BLUE,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 7,
+    elevation: 4,
   },
 
   saveButtonDisabled: {
@@ -118,9 +133,9 @@ const styles = StyleSheet.create({
 
   saveText: {
     color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "800",
-    letterSpacing: 0.5,
+    fontSize: 16,
+    fontWeight: "700",
+    fontFamily: "Inter_400Regular",
   },
 
   error: {

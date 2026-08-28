@@ -4,18 +4,22 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import { supabase } from "../lib/supabase";
+
+const BLUE = "#305CDE";
+const WHITE = "#fff"
+const FADED_BLUE = "#F0F3FF";
+const INK = "#171C2E";
+const MUTED = "#55596B";
 
 export default function ChangePasswordForm() {
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
 
-  const [showCurrent, setShowCurrent] = useState(false);
-  const [showNext, setShowNext] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
+  const [showPassword, setShowPassword] = useState(false)
 
   const [busy, setBusy] = useState(false);
 
@@ -77,64 +81,60 @@ export default function ChangePasswordForm() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>Current Password</Text>
+      <Text style={styles.label}>CURRENT PASSWORD</Text>
 
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
           value={current}
           onChangeText={setCurrent}
-          secureTextEntry={!showCurrent}
+          secureTextEntry={!showPassword}
           autoCapitalize="none"
           autoCorrect={false}
           placeholder="Enter current password"
-          placeholderTextColor="#9699A7"
+          placeholderTextColor="#A9ADB8"
         />
-
-        <TouchableOpacity
-          style={styles.eyeButton}
-          onPress={() => setShowCurrent(!showCurrent)}
-        ></TouchableOpacity>
       </View>
-      <Text style={styles.label}>New Password</Text>
+
+      <Text style={styles.label}>NEW PASSWORD</Text>
 
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
           value={next}
           onChangeText={setNext}
-          secureTextEntry={!showNext}
+          secureTextEntry={!showPassword}
           autoCapitalize="none"
           autoCorrect={false}
           placeholder="Minimum 6 characters"
-          placeholderTextColor="#9699A7"
+          placeholderTextColor="#A9ADB8"
         />
-
-        <TouchableOpacity
-          style={styles.eyeButton}
-          onPress={() => setShowNext(!showNext)}
-        ></TouchableOpacity>
       </View>
 
-      <Text style={styles.label}>Confirm New Password</Text>
+      <Text style={styles.label}>CONFIRM NEW PASSWORD</Text>
 
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
           value={confirm}
           onChangeText={setConfirm}
-          secureTextEntry={!showConfirm}
+          secureTextEntry={!showPassword}
           autoCapitalize="none"
           autoCorrect={false}
           placeholder="Confirm new password"
-          placeholderTextColor="#9699A7"
+          placeholderTextColor="#A9ADB8"
         />
-
-        <TouchableOpacity
-          style={styles.eyeButton}
-          onPress={() => setShowConfirm(!showConfirm)}
-        ></TouchableOpacity>
       </View>
+      
+      <View style={styles.showPasswordColunn}>
+        <TouchableOpacity onPress={() => setShowPassword((prev) => !prev)} activeOpacity={0.7} >
+         <View style={[ styles.selectMark, showPassword && styles.selectMarkChecked, ]} >
+           {showPassword && ( <Text style={styles.selectedMarkText}>✓</Text> )} 
+          </View> 
+         </TouchableOpacity> 
+        <Text>Show password</Text>
+      </View>
+      
 
       {message && (
         <Text
@@ -148,7 +148,7 @@ export default function ChangePasswordForm() {
         style={[styles.button, !canSubmit && styles.buttonDisabled]}
         onPress={handleChange}
         disabled={!canSubmit}
-        activeOpacity={0.75}
+        activeOpacity={0.8}
       >
         <Text style={styles.buttonText}>
           {busy ? "Updating..." : "Update Password"}
@@ -164,36 +164,43 @@ const styles = StyleSheet.create({
   },
 
   label: {
-    marginTop: 5,
     marginLeft: 3,
     fontSize: 12,
-    fontWeight: "500",
-    color: "#555967",
+    fontWeight: "600",
+    color: MUTED,
+    fontFamily: "Inter_400Regular",
   },
 
   inputContainer: {
-    height: 48,
+    height: 53,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#FFFFFF",
-    borderRadius: 10,
+    backgroundColor: FADED_BLUE,
+    borderRadius: 12,
+    paddingHorizontal: 15,
+    gap: 10,
   },
 
   input: {
     flex: 1,
     height: "100%",
-    paddingHorizontal: 14,
-    color: "#000",
-    fontSize: 14,
+    paddingHorizontal: 0,
+    color: INK,
+    fontSize: 15,
+    fontFamily: "Inter_400Regular",
   },
 
   eyeButton: {
-    width: 45,
+    width: 30,
     height: "100%",
     alignItems: "center",
     justifyContent: "center",
+  },
+
+  eyeIcon: {
+    width: 20,
+    height: 14,
+    tintColor: "#8A8FA0",
   },
 
   message: {
@@ -211,12 +218,20 @@ const styles = StyleSheet.create({
   },
 
   button: {
-    height: 48,
-    marginTop: 8,
-    borderRadius: 10,
-    backgroundColor: "#305CDE",
+    height: 55,
+    marginTop: 4,
+    borderRadius: 13,
+    backgroundColor: BLUE,
     alignItems: "center",
     justifyContent: "center",
+    shadowColor: BLUE,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 7,
+    elevation: 4,
   },
 
   buttonDisabled: {
@@ -224,8 +239,36 @@ const styles = StyleSheet.create({
   },
 
   buttonText: {
-    color: "#FFFFFF",
-    fontSize: 14,
+    color: WHITE,
+    fontSize: 16,
     fontWeight: "700",
+    fontFamily: "Inter_400Regular",
+  },
+
+  showPasswordColunn: {
+  flexDirection: "row",
+  padding: "auto",
+  gap: 5
+  },
+
+  selectMark: { 
+    width: 20,
+    height: 20,
+    borderWidth: 1,
+    borderColor: "#999",
+    borderRadius: 4,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+ 
+  selectMarkChecked: {
+    backgroundColor: "#305CDE",
+    borderColor: "#305CDE", 
+  }, 
+  
+  selectedMarkText: { 
+    color: "#FFFFFF", 
+    fontSize: 14, 
+    fontWeight: "700", 
   },
 });

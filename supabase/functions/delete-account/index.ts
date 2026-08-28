@@ -55,7 +55,25 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Account not found in your school" }), { status: 404 });
     }
 
-    await supabaseAdmin.from("attendance").delete().eq("student_id", targetUserId);
+    // Clean up child rows referencing the target's profile BEFORE deleting the auth
+    // user. Otherwise the profiles.id FK cascade is blocked by these rows
+    // (default NO ACTION) and auth.admin.deleteUser() fails.
+    const { error: attendanceError } = await supabaseAdmin
+      .from("attendance")
+      .delete()
+      .eq("student_id", targetUserId);
+    if (attendanceError) {
+      return new Response(JSON.stringify({ error: attendanceError.message }), { status: 400 });
+    }
+
+    const { error: enrollmentsError } = await supabaseAdmin
+      .from("section_enrollments")
+      .delete()
+      .eq("student_id", targetUserId);
+    if (enrollmentsError) {
+      return new Response(JSON.stringify({ error: enrollmentsError.message }), { status: 400 });
+    }
+
     const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(targetUserId);
     if (deleteError) {
       return new Response(JSON.stringify({ error: deleteError.message }), { status: 400 });

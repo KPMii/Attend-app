@@ -136,14 +136,8 @@ export default function SessionDetail() {
             <Text style={styles.sessionTitle}>{title}</Text>
 
             <View style={styles.metaRow}>
-              <Ionicons name="location-outline" size={15} color="#85899B" />
-
               <Text style={styles.meta}>{sessionInfo.room || "No room"}</Text>
-
-              <Text style={styles.separator}>-</Text>
-
               <Ionicons name="time-outline" size={15} color="#85899B" />
-
               <Text style={styles.meta}>
                 {formatTime(sessionInfo.createdAt)}
               </Text>
@@ -258,6 +252,7 @@ const styles = StyleSheet.create({
   },
 
   scroll: {
+    marginTop: 36,
     padding: 20,
     paddingBottom: 40,
   },
@@ -289,11 +284,6 @@ const styles = StyleSheet.create({
   meta: {
     color: "#85899B",
     fontSize: 12,
-  },
-
-  separator: {
-    color: "#B7B9C0",
-    marginHorizontal: 2,
   },
 
   summaryRow: {

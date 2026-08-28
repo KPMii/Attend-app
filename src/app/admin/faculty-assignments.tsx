@@ -284,7 +284,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#FBFBFF" },
   scroll: { padding: 24, gap: 8, paddingBottom: 48 },
   title: {
-    marginTop: 36,
+    marginTop: 42,
     color: "#17181C",
     fontSize: 26,
     fontWeight: "800",

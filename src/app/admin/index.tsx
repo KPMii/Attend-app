@@ -1,6 +1,6 @@
 import { logoutAndRedirect } from "@/lib/navigation";
-import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 import {
   Image,
   SafeAreaView,
@@ -56,6 +56,8 @@ export default function AdminHome() {
       sections: sections ?? 0,
     });
   };
+
+  useFocusEffect(useCallback(() => {loadStats()}, []))
 
   const handleLogout = async () => {
     await logoutAndRedirect();

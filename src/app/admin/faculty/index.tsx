@@ -1,5 +1,6 @@
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useFocusEffect } from "expo-router/build/react-navigation";
+import { useCallback, useEffect, useState } from "react";
 import {
   FlatList,
   Image,
@@ -43,10 +44,14 @@ export default function FacultyList() {
     setLoading(false);
   };
 
+  useFocusEffect(
+    useCallback(() => {fetchFaculty()},[])
+  )
+
   useEffect(() => {
     fetchFaculty();
   }, [page]);
-
+  
   const filtered = faculty.filter((f) =>
     f.full_name?.toLowerCase().includes(search.toLowerCase()),
   );
@@ -54,17 +59,6 @@ export default function FacultyList() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-
-      <View style={styles.header}>
-        <View style={styles.logoContainer}>
-          <View style={styles.logoPlaceholder}>
-            <Image
-              source={require("../../assets/logo.png")}
-              style={styles.logo}
-            />
-          </View>
-        </View>
-      </View>
 
       <View style={styles.content}>
         <View style={styles.titleRow}>
@@ -142,40 +136,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#FBFBFF",
   },
 
-  header: {
-    marginTop: 30,
-    height: 74,
-    paddingHorizontal: 30,
-    backgroundColor: "#FFFFFF",
-    borderBottomWidth: 1,
-    borderBottomColor: "#F1F2F7",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-
-  logoContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 11,
-  },
-
-  logoPlaceholder: {
-    width: 48,
-    height: 48,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#FFFFFF",
-  },
-
-  logo: {
-    width: 48,
-    height: 48,
-  },
-
   content: {
     flex: 1,
     paddingHorizontal: 30,
+    marginTop: 36
   },
 
   titleRow: {
@@ -261,10 +225,10 @@ const styles = StyleSheet.create({
   },
 
   studentCard: {
-    minHeight: 116,
+    minHeight: 16,
     marginBottom: 12,
     paddingHorizontal: 24,
-    paddingVertical: 20,
+    paddingVertical: 18,
     borderRadius: 18,
     backgroundColor: "#FFFFFF",
     flexDirection: "row",
@@ -287,15 +251,14 @@ const styles = StyleSheet.create({
   },
 
   name: {
-    fontSize: 20,
+    fontSize: 14,
     fontWeight: "700",
     color: "#111525",
     fontFamily: "Inter_400Regular",
   },
 
   idText: {
-    marginTop: 8,
-    fontSize: 16,
+    fontSize: 11,
     color: "#737689",
     fontFamily: "Inter_400Regular",
   },
