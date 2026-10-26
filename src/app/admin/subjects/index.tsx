@@ -9,6 +9,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useAuthStore } from "../../../../stores/authStore";
+import { cacheSubjects, getCachedSubjects } from "../../../lib/db";
 import { PAGE_SIZE, getRange } from "../../../lib/pagination";
 import { supabase } from "../../../lib/supabase";
 
@@ -22,22 +24,9 @@ export default function AdminSubjects() {
   const [page, setPage] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
 
-  const getMySchoolId = async (): Promise<string | null> => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return null;
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("school_id")
-      .eq("id", user.id)
-      .single();
-    return profile?.school_id ?? null;
-  };
-
   const fetchSubjects = async () => {
     setLoading(true);
-    const schoolId = await getMySchoolId();
+    const schoolId = useAuthStore.getState().schoolId;
     if (!schoolId) {
       setError("No school assigned to this account.");
       setLoading(false);
@@ -45,15 +34,26 @@ export default function AdminSubjects() {
     }
     const { from, to } = getRange(page);
 
-    const { data, count } = await supabase
-      .from("subjects")
-      .select("id, name", { count: "exact" })
-      .eq("school_id", schoolId)
-      .order("name")
-      .range(from, to);
+    try {
+      const { data, count } = await supabase
+        .from("subjects")
+        .select("id, name", { count: "exact" })
+        .eq("school_id", schoolId)
+        .order("name")
+        .range(from, to);
 
-    if (data) setSubjects(data);
-    setTotalCount(count ?? 0);
+      if (data) {
+        setSubjects(data);
+        cacheSubjects(data).catch(() => {});
+      }
+      setTotalCount(count ?? 0);
+    } catch (err) {
+      console.log("[Subjects] Remote fetch failed, using cache:", err);
+      const cached = await getCachedSubjects().catch(() => []);
+      setSubjects(cached);
+      setTotalCount(cached.length);
+    }
+
     setLoading(false);
   };
 
@@ -65,12 +65,10 @@ export default function AdminSubjects() {
     if (!newName.trim()) return;
     setError(null);
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
+    const userId = useAuthStore.getState().userId;
+    if (!userId) return;
 
-    const schoolId = await getMySchoolId();
+    const schoolId = useAuthStore.getState().schoolId;
     if (!schoolId) {
       setError("No school assigned to this account.");
       return;
@@ -78,7 +76,7 @@ export default function AdminSubjects() {
 
     const { error: insertError } = await supabase.from("subjects").insert({
       name: newName.trim(),
-      faculty_id: user.id,
+      faculty_id: userId,
       school_id: schoolId,
     });
 

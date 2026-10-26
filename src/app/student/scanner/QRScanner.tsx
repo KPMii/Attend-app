@@ -71,11 +71,13 @@ export default function QRScanner() {
     try {
       const session: SessionPayload = JSON.parse(data);
 
+      // Use cached identity — supabase.auth.getUser() hits the network and
+      // throws when offline, which would abort the scan before saving.
+      const userId = useAuthStore.getState().userId;
+      if (!userId) throw new Error("Not logged in");
+
       // Rate limit: prevent spam scanning (max 3 scans in 30s)
-      const {
-        data: { user: rateUser },
-      } = await supabase.auth.getUser();
-      const rateKey = `qr_scan_${rateUser?.id ?? "anon"}`;
+      const rateKey = `qr_scan_${userId}`;
       const { allowed, retryAfterMs } = await checkRateLimit(rateKey, {
         maxAttempts: 3,
         windowMs: 30 * 1000,
@@ -96,11 +98,6 @@ export default function QRScanner() {
         throw new Error("This session has expired");
       }
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not logged in");
-
       await recordAttempt(rateKey);
 
       // 3. Multi-tenant guard: block cross-school attendance
@@ -109,17 +106,29 @@ export default function QRScanner() {
         throw new Error("This session belongs to a different school");
       }
 
-      // 4. Roster check only for CLASS sessions, events have no roster
+      // 4. Roster check only for CLASS sessions, events have no roster.
+      //    It needs network, so a network failure is treated as non-fatal
+      //    (offline) and the scan is still recorded locally.
       if (session.sessionType === "class" && session.sectionId) {
-        const { data: enrollment } = await supabase
-          .from("section_enrollments")
-          .select("id")
-          .eq("section_id", session.sectionId)
-          .eq("student_id", user.id)
-          .maybeSingle();
+        try {
+          const { data: enrollment, error: enrollmentError } = await supabase
+            .from("section_enrollments")
+            .select("id")
+            .eq("section_id", session.sectionId)
+            .eq("student_id", userId)
+            .maybeSingle();
 
-        if (!enrollment) {
-          throw new Error("You are not enrolled in this section");
+          if (!enrollmentError && !enrollment) {
+            throw new Error("You are not enrolled in this section");
+          }
+        } catch (err) {
+          if (
+            err instanceof Error &&
+            err.message === "You are not enrolled in this section"
+          ) {
+            throw err;
+          }
+          console.log("[Scanner] Enrollment check skipped (offline?):", err);
         }
       }
 
@@ -133,7 +142,7 @@ export default function QRScanner() {
       await saveAttendance({
         id: attendanceId,
         session_id: session.id,
-        student_id: user.id,
+        student_id: userId,
         scanned_at: scannedAt,
         status: isLate ? "late" : "present",
         token_used: session.token,
@@ -146,7 +155,7 @@ export default function QRScanner() {
           .insert({
             id: attendanceId,
             session_id: session.id,
-            student_id: user.id,
+            student_id: userId,
             scanned_at: scannedAt,
             status: isLate ? "late" : "present",
             token_used: session.token,

@@ -16,7 +16,16 @@ import {
 import { useAuthStore } from "../../../stores/authStore";
 import { LazyQRCode } from "../../components/lazyQRCode";
 import { logAction } from "../../lib/audit";
-import { getDB, markSynced, saveSession } from "../../lib/db";
+import {
+  cacheSections,
+  cacheSubjects,
+  getCachedSections,
+  getCachedSubjects,
+  getDB,
+  getLocalSession,
+  markSynced,
+  saveSession,
+} from "../../lib/db";
 import { supabase } from "../../lib/supabase";
 
 const { width } = Dimensions.get("window");
@@ -33,6 +42,11 @@ async function saveSessionToLocal(session: SessionPayload) {
     expires_at: session.expiresAt,
     role: session.role,
     late_threshold_minutes: session.lateThresholdMinutes,
+    session_type: session.sessionType,
+    event_name: session.eventName,
+    section_id: session.sectionId,
+    subject_id: session.subjectId,
+    school_id: session.schoolId,
   });
   console.log("[SQLite] Save session locally:", session);
 }
@@ -230,53 +244,91 @@ export default function QRGenerator() {
   const selectedRoomName = selectedSection?.room ?? "";
 
   useEffect(() => {
-    supabase
-      .from("subjects")
-      .select("id, name")
-      .order("name")
-      .then(({ data }) => {
-        if (data) setSubjects(data);
-      });
+    let cancelled = false;
 
-    supabase
-      .from("sections")
-      .select("id, name, room")
-      .order("name")
-      .then(({ data }) => {
-        if (data) setSections(data);
-      });
+    // 1) Show cached subjects/sections immediately (works offline).
+    (async () => {
+      try {
+        const [cachedSubjects, cachedSections] = await Promise.all([
+          getCachedSubjects(),
+          getCachedSections(),
+        ]);
+        if (cancelled) return;
+        if (cachedSubjects.length) setSubjects(cachedSubjects);
+        if (cachedSections.length) setSections(cachedSections);
+      } catch (err) {
+        console.log("[Catalog] Read cache failed:", err);
+      }
+    })();
+
+    // 2) Refresh from the network and update the cache when online.
+    (async () => {
+      try {
+        const [{ data: subjectsData }, { data: sectionsData }] =
+          await Promise.all([
+            supabase.from("subjects").select("id, name").order("name"),
+            supabase.from("sections").select("id, name, room").order("name"),
+          ]);
+
+        if (cancelled) return;
+
+        if (subjectsData?.length) {
+          setSubjects(subjectsData);
+          cacheSubjects(subjectsData).catch(() => {});
+        }
+        if (sectionsData?.length) {
+          setSections(sectionsData);
+          cacheSections(sectionsData).catch(() => {});
+        }
+      } catch (err) {
+        console.log("[Catalog] Fetch failed (offline?), using cache:", err);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  // Pre-fill from resumed session
+  // Pre-fill from resumed session (local first so it works offline)
   useEffect(() => {
     if (!resume) return;
-    supabase
-      .from("sessions")
-      .select("subject, room, event_name, session_type, section_id")
-      .eq("id", resume)
-      .single()
-      .then(({ data }) => {
-        if (!data) return;
-        setSessionType((data.session_type as SessionType) || "event");
-        if (data.session_type === "event") {
-          setEventName(data.event_name || data.subject);
-          setEventRoom(data.room);
-          setSelectedSectionId(data.section_id || null);
-        }
-      });
+
+    const apply = (data: {
+      subject: string;
+      room: string;
+      event_name: string | null;
+      session_type: string | null;
+      section_id: string | null;
+    }) => {
+      setSessionType((data.session_type as SessionType) || "event");
+      if (data.session_type === "event") {
+        setEventName(data.event_name || data.subject);
+        setEventRoom(data.room);
+        setSelectedSectionId(data.section_id || null);
+      }
+    };
+
+    (async () => {
+      const local = await getLocalSession(resume).catch(() => null);
+      if (local) apply(local);
+
+      try {
+        const { data } = await supabase
+          .from("sessions")
+          .select("subject, room, event_name, session_type, section_id")
+          .eq("id", resume)
+          .single();
+        if (data) apply(data);
+      } catch (err) {
+        console.log("[Resume] Remote fetch failed, using local:", err);
+      }
+    })();
   }, [resume]);
 
   const buildSession = async (t: string): Promise<SessionPayload> => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("school_id")
-      .eq("id", user?.id)
-      .single();
-    const schoolId = profile?.school_id ?? null;
+    const { userId, schoolId } = useAuthStore.getState();
+    const facultyId = userId ?? "unknown";
 
     const createdAt = new Date().toISOString();
     const expiresAt = new Date(
@@ -291,7 +343,7 @@ export default function QRGenerator() {
         subjectId: null,
         room: eventRoom,
         sectionId: selectedSectionId,
-        facultyId: user?.id ?? "unknown",
+        facultyId,
         token: t,
         createdAt,
         expiresAt,
@@ -310,7 +362,7 @@ export default function QRGenerator() {
       subjectId: selectedSubjectId,
       room: selectedRoomName,
       sectionId: selectedSectionId,
-      facultyId: user?.id ?? "unknown",
+      facultyId,
       token: t,
       createdAt,
       expiresAt,

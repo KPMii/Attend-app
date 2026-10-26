@@ -11,6 +11,7 @@ import {
   View,
 } from "react-native";
 import { useAuthStore } from "../../../../stores/authStore";
+import { getLocalSessions } from "../../../lib/db";
 import { PAGE_SIZE, getRange } from "../../../lib/pagination";
 import { supabase } from "../../../lib/supabase";
 
@@ -19,7 +20,7 @@ type SessionRow = {
   subject: string;
   room: string;
   created_at: string;
-  session_type: string;
+  session_type: string | null;
   event_name: string | null;
 };
 
@@ -39,26 +40,54 @@ export default function FacultySessionHistory() {
   const fetchSessions = async () => {
     setLoading(true);
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const userId = useAuthStore.getState().userId;
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
 
-    if (!user) return;
+    const local = await getLocalSessions(userId).catch(() => []);
 
-    const { from, to } = getRange(page);
+    try {
+      const { from, to } = getRange(page);
 
-    const { data, count } = await supabase
-      .from("sessions")
-      .select("id, subject, room, created_at, session_type, event_name", {
-        count: "exact",
-      })
-      .eq("faculty_id", user.id)
-      .order("created_at", { ascending: false })
-      .range(from, to);
+      const { data, count } = await supabase
+        .from("sessions")
+        .select("id, subject, room, created_at, session_type, event_name", {
+          count: "exact",
+        })
+        .eq("faculty_id", userId)
+        .order("created_at", { ascending: false })
+        .range(from, to);
 
-    if (data) setSessions(data);
+      const remoteIds = new Set((data ?? []).map((s) => s.id));
+      const unsyncedLocal = local
+        .filter((s) => s.synced === 0 && !remoteIds.has(s.id))
+        .map((s) => ({
+          id: s.id,
+          subject: s.subject,
+          room: s.room,
+          created_at: s.created_at,
+          session_type: s.session_type,
+          event_name: s.event_name,
+        }));
 
-    setTotalCount(count ?? 0);
+      setSessions([...unsyncedLocal, ...(data ?? [])]);
+      setTotalCount((count ?? 0) + unsyncedLocal.length);
+    } catch (err) {
+      console.log("[Sessions] Remote fetch failed, using local:", err);
+      const rows = local.map((s) => ({
+        id: s.id,
+        subject: s.subject,
+        room: s.room,
+        created_at: s.created_at,
+        session_type: s.session_type,
+        event_name: s.event_name,
+      }));
+      setSessions(rows);
+      setTotalCount(rows.length);
+    }
+
     setLoading(false);
   };
 

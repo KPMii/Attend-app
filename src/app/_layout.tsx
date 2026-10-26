@@ -9,6 +9,7 @@ import {
 } from "@expo-google-fonts/inter";
 import { Stack } from "expo-router";
 import { useEffect } from "react";
+import { AppState } from "react-native";
 import { useAuthStore } from "../../stores/authStore";
 import { syncPendingQueue } from "../lib/syncQueue";
 
@@ -36,6 +37,17 @@ export default function RootLayout() {
     });
 
     return () => unsubscribe();
+  }, []);
+
+  // Also retry whenever the app returns to the foreground (e.g. after the
+  // user turns Wi-Fi/data back on from Settings while the app is backgrounded).
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        syncPendingQueue();
+      }
+    });
+    return () => subscription.remove();
   }, []);
 
   if (!fontsLoaded) {

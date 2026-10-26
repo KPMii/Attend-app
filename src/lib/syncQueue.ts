@@ -42,6 +42,11 @@ async function syncSessions() {
           expires_at: session.expires_at,
           role: session.role,
           late_threshold_minutes: session.late_threshold_minutes,
+          session_type: session.session_type ?? null,
+          event_name: session.event_name ?? null,
+          section_id: session.section_id ?? null,
+          subject_id: session.subject_id ?? null,
+          school_id: session.school_id ?? null,
         });
 
         if (error) throw error;
