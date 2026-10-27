@@ -62,6 +62,7 @@ async function setupSchema() {
       scanned_at TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'present',
       token_used TEXT,
+      payload TEXT,
       synced INTEGER DEFAULT 0
     );
 
@@ -118,6 +119,11 @@ async function setupSchema() {
   }
   try {
     await db.execAsync(`ALTER TABLE attendance ADD COLUMN token_used TEXT;`);
+  } catch {
+    // Column already exists - safe to ignore
+  }
+  try {
+    await db.execAsync(`ALTER TABLE attendance ADD COLUMN payload TEXT;`);
   } catch {
     // Column already exists - safe to ignore
   }
@@ -209,12 +215,13 @@ export async function saveAttendance(record: {
   scanned_at: string;
   status: string;
   token_used?: string;
+  payload?: string;
 }) {
   const db = await getDB();
   await db.runAsync(
     `INSERT OR REPLACE INTO attendance
-    (id, session_id, student_id, scanned_at, status, token_used, synced)
-    VALUES (?,?,?,?,?,?,0)`,
+    (id, session_id, student_id, scanned_at, status, token_used, payload, synced)
+    VALUES (?,?,?,?,?,?,?,0)`,
     [
       record.id,
       record.session_id,
@@ -222,6 +229,7 @@ export async function saveAttendance(record: {
       record.scanned_at,
       record.status,
       record.token_used ?? null,
+      record.payload ?? null,
     ],
   );
 }

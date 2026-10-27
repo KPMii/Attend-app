@@ -1,4 +1,3 @@
-import * as Crypto from "expo-crypto";
 import { Stack } from "expo-router";
 import { useState } from "react";
 import {
@@ -19,8 +18,6 @@ import { supabase } from "../../../lib/supabase";
 
 const { width } = Dimensions.get("window");
 const SCAN_SIZE = width * 0.7;
-
-const SECRET = process.env.EXPO_PUBLIC_QR_SECRET;
 
 type SessionPayload = {
   id: string;
@@ -47,13 +44,18 @@ function checkIfLate(session: SessionPayload): boolean {
   return scannedAt - sessionStart > thresholdMs;
 }
 
-async function verifySignature(session: SessionPayload): Promise<boolean> {
-  const data = `${session.id}:${session.token}:${session.expiresAt}:${SECRET}`;
-  const expectedSignature = await Crypto.digestStringAsync(
-    Crypto.CryptoDigestAlgorithm.SHA256,
-    data,
-  );
-  return expectedSignature === session.signature;
+function mapVerifyReason(reason: string): string {
+  switch (reason) {
+    case "expired":
+      return "This session has expired";
+    case "not_enrolled":
+      return "You are not enrolled in this section";
+    case "wrong_school":
+      return "This session belongs to a different school";
+    case "invalid_signature":
+    default:
+      return "Invalid or tampered QR code";
+  }
 }
 
 export default function QRScanner() {
@@ -87,50 +89,17 @@ export default function QRScanner() {
         throw new Error(`Slow down! Try again in ${secs}s.`);
       }
 
-      // 1. Verify the QR hasn't been tampered with or forged
-      const isValid = await verifySignature(session);
-      if (!isValid) {
-        throw new Error("Invalid or tampered QR code");
-      }
-
-      // 2. Reject expired sessions outright
+      // 1. Local-only quick rejects (the server re-verifies authoritatively).
       if (new Date(session.expiresAt).getTime() < Date.now()) {
         throw new Error("This session has expired");
       }
 
-      await recordAttempt(rateKey);
-
-      // 3. Multi-tenant guard: block cross-school attendance
       const studentSchoolId = useAuthStore.getState().schoolId;
       if (session.schoolId && session.schoolId !== studentSchoolId) {
         throw new Error("This session belongs to a different school");
       }
 
-      // 4. Roster check only for CLASS sessions, events have no roster.
-      //    It needs network, so a network failure is treated as non-fatal
-      //    (offline) and the scan is still recorded locally.
-      if (session.sessionType === "class" && session.sectionId) {
-        try {
-          const { data: enrollment, error: enrollmentError } = await supabase
-            .from("section_enrollments")
-            .select("id")
-            .eq("section_id", session.sectionId)
-            .eq("student_id", userId)
-            .maybeSingle();
-
-          if (!enrollmentError && !enrollment) {
-            throw new Error("You are not enrolled in this section");
-          }
-        } catch (err) {
-          if (
-            err instanceof Error &&
-            err.message === "You are not enrolled in this section"
-          ) {
-            throw err;
-          }
-          console.log("[Scanner] Enrollment check skipped (offline?):", err);
-        }
-      }
+      await recordAttempt(rateKey);
 
       const isLate = checkIfLate(session);
       setStatus(isLate ? "late" : "present");
@@ -138,7 +107,43 @@ export default function QRScanner() {
       const attendanceId = `att_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
       const scannedAt = new Date().toISOString();
 
-      // 5. Save locally first (offline-first)
+      // 2. Server-side verification + recording. The HMAC secret lives only on
+      //    the backend, so the signature cannot be forged client-side. A
+      //    network failure is treated as offline and the record is queued.
+      let recordedOnServer = false;
+      let rejection: string | null = null;
+      try {
+        const { data: res, error: fnError } = await supabase.functions.invoke(
+          "verify-session",
+          {
+            body: {
+              session,
+              attendance: {
+                id: attendanceId,
+                session_id: session.id,
+                scanned_at: scannedAt,
+              },
+            },
+          },
+        );
+
+        const result = typeof res === "string" ? JSON.parse(res) : res;
+
+        if (!fnError && result?.valid === false) {
+          rejection = mapVerifyReason(result.reason);
+        } else if (!fnError && result?.valid === true) {
+          recordedOnServer = true;
+        }
+      } catch (invokeErr) {
+        console.log("[Scanner] verify-session unavailable (offline?):", invokeErr);
+      }
+
+      if (rejection) {
+        throw new Error(rejection);
+      }
+
+      // 3. Record locally (offline-first). If the server already recorded it,
+      //    mark it synced so it isn't re-queued.
       await saveAttendance({
         id: attendanceId,
         session_id: session.id,
@@ -146,24 +151,10 @@ export default function QRScanner() {
         scanned_at: scannedAt,
         status: isLate ? "late" : "present",
         token_used: session.token,
+        payload: data,
       });
-
-      // 6. Try syncing immediately, don't block confirmation
-      try {
-        const { error: insertError } = await supabase
-          .from("attendance")
-          .insert({
-            id: attendanceId,
-            session_id: session.id,
-            student_id: userId,
-            scanned_at: scannedAt,
-            status: isLate ? "late" : "present",
-            token_used: session.token,
-          });
-        if (insertError) throw insertError;
+      if (recordedOnServer) {
         await markSynced("attendance", attendanceId);
-      } catch (syncErr) {
-        console.log("[Attendance] Queued for later sync:", syncErr);
       }
     } catch (err) {
       console.error("Attendance error:", err);

@@ -73,16 +73,58 @@ async function syncAttendance() {
 
     for (const record of unsynced) {
       try {
-        const { error } = await supabase.from("attendance").upsert({
-          id: record.id,
-          session_id: record.session_id,
-          student_id: record.student_id,
-          scanned_at: record.scanned_at,
-          status: record.status,
-          token_used: record.token_used,
-        });
+        let session: any = null;
+        if (record.payload) {
+          try {
+            session = JSON.parse(record.payload);
+          } catch {
+            session = null;
+          }
+        }
 
-        if (error) throw error;
+        // Legacy records (saved before server-side signing) have no payload,
+        // so fall back to a direct upsert.
+        if (!session) {
+          const { error } = await supabase.from("attendance").upsert({
+            id: record.id,
+            session_id: record.session_id,
+            student_id: record.student_id,
+            scanned_at: record.scanned_at,
+            status: record.status,
+            token_used: record.token_used,
+          });
+          if (error) throw error;
+          await markSynced("attendance", record.id);
+          console.log("[SyncQueue] Synced attendance (legacy):", record.id);
+          continue;
+        }
+
+        // Server-authoritative verification + recording.
+        const { data: res, error: fnError } = await supabase.functions.invoke(
+          "verify-session",
+          {
+            body: {
+              session,
+              attendance: {
+                id: record.id,
+                session_id: record.session_id,
+                scanned_at: record.scanned_at,
+              },
+            },
+          },
+        );
+
+        if (fnError) throw fnError;
+
+        const result = typeof res === "string" ? JSON.parse(res) : res;
+
+        if (result && result.valid === false) {
+          // Rejected by the server (forged/expired/not-enrolled). Dequeue it
+          // so it isn't retried forever.
+          await markSynced("attendance", record.id);
+          console.log("[SyncQueue] Rejected attendance:", record.id, result.reason);
+          continue;
+        }
 
         await markSynced("attendance", record.id);
         console.log("[SyncQueue] Synced attendance:", record.id);

@@ -59,7 +59,7 @@ export default function StudentList() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" />
       <View style={styles.content}>
         <View style={styles.titleRow}>
           <Text style={styles.title}>Students</Text>
@@ -124,7 +124,7 @@ export default function StudentList() {
           ListEmptyComponent={
             !loading ? (
               <Text style={styles.empty}>No students found</Text>
-            ) : null
+            ) : undefined
           }
         />
       </View>

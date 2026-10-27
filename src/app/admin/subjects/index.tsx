@@ -112,7 +112,7 @@ export default function AdminSubjects() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
         <Text style={styles.title}>Subjects</Text>
       </View>
@@ -147,7 +147,7 @@ export default function AdminSubjects() {
           </View>
         )}
         ListEmptyComponent={
-          !loading ? <Text style={styles.empty}>No subjects yet</Text> : null
+          !loading ? <Text style={styles.empty}>No subjects yet</Text> : undefined
         }
       />
 

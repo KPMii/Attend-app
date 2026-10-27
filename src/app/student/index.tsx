@@ -67,7 +67,7 @@ export default function StudentHome() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.root}>
-        <StatusBar barStyle="light-content" backgroundColor="#4361EE" />
+        <StatusBar barStyle="light-content" />
 
         <View style={styles.header}>
           <View style={styles.logoBox}>

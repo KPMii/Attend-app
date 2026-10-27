@@ -1,4 +1,4 @@
-﻿import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   SafeAreaView,
@@ -130,7 +130,7 @@ export default function ManageAssignments() {
   return (
     <SafeAreaView style={styles.container}>
       <Stack.Screen options={{ title: "Manage Assignments" }} />
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" />
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.title}>Faculty Assignments</Text>
         <Text style={styles.subtitle}>

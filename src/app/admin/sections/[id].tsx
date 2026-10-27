@@ -129,7 +129,7 @@ export default function AdminSectionDetail() {
   return (
     <SafeAreaView style={styles.container}>
       <Stack.Screen options={{ title: sectionName || "Section" }} />
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" />
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.title}>{sectionName}</Text>
         <Text style={styles.roomText}>Room: {room || "—"}</Text>

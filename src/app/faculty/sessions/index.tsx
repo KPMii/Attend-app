@@ -97,7 +97,7 @@ export default function FacultySessionHistory() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" />
 
       <View style={styles.header}>
         <View style={styles.headerTitleArea}>
@@ -195,7 +195,7 @@ export default function FacultySessionHistory() {
                 Your completed sessions will appear here.
               </Text>
             </View>
-          ) : null
+          ) : undefined
         }
       />
 

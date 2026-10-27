@@ -41,7 +41,7 @@ export default function EventsList() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
         <Text style={styles.title}>Events</Text>
         <TouchableOpacity
@@ -77,7 +77,7 @@ export default function EventsList() {
           </View>
         )}
         ListEmptyComponent={
-          !loading ? <Text style={styles.empty}>No events yet</Text> : null
+          !loading ? <Text style={styles.empty}>No events yet</Text> : undefined
         }
       />
     </SafeAreaView>

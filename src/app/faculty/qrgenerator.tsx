@@ -1,7 +1,7 @@
-import * as Crypto from "expo-crypto";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
+  Alert,
   Animated,
   Dimensions,
   SafeAreaView,
@@ -116,8 +116,6 @@ type SessionPayload = {
   eventName: string | null;
 };
 
-const SECRET = process.env.EXPO_PUBLIC_QR_SECRET;
-
 function generateToken() {
   return Math.random().toString(36).substring(2, 10).toUpperCase();
 }
@@ -130,16 +128,40 @@ function buildQRPayload(session: SessionPayload): string {
   return JSON.stringify(session);
 }
 
-async function signPayload(
-  sessionId: string,
-  token: string,
-  expiresAt: string,
-): Promise<string> {
-  const data = `${sessionId}:${token}:${expiresAt}:${SECRET}`;
-  return await Crypto.digestStringAsync(
-    Crypto.CryptoDigestAlgorithm.SHA256,
-    data,
-  );
+async function extractFunctionError(error: unknown): Promise<string> {
+  const e = error as {
+    message?: string;
+    context?: { text?: () => Promise<string> };
+  };
+  if (e && typeof e === "object" && e.context && typeof e.context.text === "function") {
+    try {
+      const raw = await e.context.text();
+      try {
+        const parsed = JSON.parse(raw) as { error?: unknown; message?: unknown };
+        if (parsed && typeof parsed.error === "string") return parsed.error;
+        if (parsed && typeof parsed.message === "string") return parsed.message;
+      } catch {
+        // non-JSON body — fall through to raw text
+      }
+      if (raw) return raw;
+    } catch {
+      // ignore extraction failures
+    }
+  }
+  if (e && typeof e.message === "string" && e.message) return e.message;
+  return "Unknown error";
+}
+
+async function requestSignature(payload: SessionPayload): Promise<string> {
+  const { data, error } = await supabase.functions.invoke("sign-session", {
+    body: payload,
+  });
+  if (error) {
+    throw new Error(await extractFunctionError(error));
+  }
+  const result = typeof data === "string" ? JSON.parse(data) : data;
+  if (!result?.signature) throw new Error("No signature returned from sign-session");
+  return result.signature as string;
 }
 
 function CountdownRing({ seconds, total }: { seconds: number; total: number }) {
@@ -334,7 +356,7 @@ export default function QRGenerator() {
     const expiresAt = new Date(
       Date.now() + parseInt(duration) * 60 * 1000,
     ).toISOString();
-    const signature = await signPayload(sessionId, t, expiresAt);
+    const signature = "";
 
     if (sessionType === "event") {
       return {
@@ -382,11 +404,28 @@ export default function QRGenerator() {
       useNativeDriver: true,
     }).start(async () => {
       const newToken = generateToken();
+
+      let session: SessionPayload;
+      try {
+        session = await buildSession(newToken);
+        session.signature = await requestSignature(session);
+      } catch (err) {
+        // Offline: keep the last valid signed QR instead of showing an
+        // unsigned (forgery-vulnerable) code.
+        console.log("[TokenRotation] Signing failed (offline?), keeping last token:", err);
+        setSyncStatus("offline");
+        setCountdown(QR_INTERVAL);
+        Animated.timing(qrFadeAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }).start();
+        return;
+      }
+
       setToken(newToken);
       setCountdown(QR_INTERVAL);
       setRotationCount((c) => c + 1);
-
-      const session = await buildSession(newToken);
       setQrPayload(buildQRPayload(session));
 
       Animated.timing(qrFadeAnim, {
@@ -420,7 +459,22 @@ export default function QRGenerator() {
     setIsActive(true);
     setRotationCount(0);
 
-    const session = await buildSession(initialToken);
+    let session: SessionPayload;
+    try {
+      session = await buildSession(initialToken);
+      session.signature = await requestSignature(session);
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      console.log("[QR] Session signing failed:", reason);
+      setIsActive(false);
+      setSyncStatus("offline");
+      Alert.alert(
+        "Couldn't start session",
+        `QR signing failed: ${reason}`,
+      );
+      return;
+    }
+
     setQrPayload(buildQRPayload(session));
 
     setSyncStatus("syncing");

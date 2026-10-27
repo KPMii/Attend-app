@@ -127,7 +127,7 @@ export default function AdminSections() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
         <Text style={styles.title}>Sections</Text>
       </View>
@@ -173,7 +173,7 @@ export default function AdminSections() {
           </TouchableOpacity>
         )}
         ListEmptyComponent={
-          !loading ? <Text style={styles.empty}>No sections yet</Text> : null
+          !loading ? <Text style={styles.empty}>No sections yet</Text> : undefined
         }
       />
 

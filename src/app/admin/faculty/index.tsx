@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { useFocusEffect } from "expo-router/build/react-navigation";
+import { useFocusEffect } from "@react-navigation/native";
 import { useCallback, useEffect, useState } from "react";
 import {
   FlatList,
@@ -58,7 +58,7 @@ export default function FacultyList() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" />
 
       <View style={styles.content}>
         <View style={styles.titleRow}>
@@ -122,7 +122,7 @@ export default function FacultyList() {
           ListEmptyComponent={
             !loading ? (
               <Text style={styles.empty}>No students found</Text>
-            ) : null
+            ) : undefined
           }
         />
       </View>
