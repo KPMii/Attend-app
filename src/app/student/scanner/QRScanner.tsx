@@ -1,7 +1,10 @@
-import { Stack } from "expo-router";
-import { useState } from "react";
+import { useCameraPermissions } from "expo-camera";
+import { Stack, useRouter } from "expo-router";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Dimensions,
+  Linking,
+  Modal,
   StatusBar,
   StyleSheet,
   Text,
@@ -59,10 +62,38 @@ function mapVerifyReason(reason: string): string {
 }
 
 export default function QRScanner() {
+  const router = useRouter();
+  const [permission, requestPermission] = useCameraPermissions();
+  const requestedPermission = useRef(false);
   const [scanned, setScanned] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [status, setStatus] = useState<"present" | "late" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [requesting, setRequesting] = useState(false);
+
+  // Request camera access and keep the loading state visible while the OS
+  // prompt is on screen, so our own sheet never shows underneath it.
+  const requestCameraAccess = useCallback(() => {
+    setRequesting(true);
+    requestPermission()
+      .then(() => setRequesting(false))
+      .catch(() => setRequesting(false));
+  }, [requestPermission]);
+
+  // Option B: trigger the native permission prompt automatically on first
+  // open so the OS dialog is the single, canonical permission prompt. The
+  // floating sheet below is only a fallback after denial or when blocked.
+  useEffect(() => {
+    if (
+      permission &&
+      !permission.granted &&
+      permission.canAskAgain &&
+      !requestedPermission.current
+    ) {
+      requestedPermission.current = true;
+      requestCameraAccess();
+    }
+  }, [permission, requestCameraAccess]);
 
   const handleScanned = async ({ data }: { data: string }) => {
     if (scanned) return;
@@ -173,6 +204,85 @@ export default function QRScanner() {
     setError(null);
   };
 
+  // iOS-style "Don't Allow" / "Not Now": leave the scanner. Fall back to the
+  // student home when there is no history (e.g. deep-linked into the scanner).
+  const handleDismissPermission = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/student");
+    }
+  };
+
+  // Camera permission gate. expo-camera's CameraView renders a black preview
+  // when the CAMERA permission has not been granted, so we must request it
+  // before mounting the camera.
+  //
+  // Option B: the OS prompt is triggered automatically on first open, so the
+  // native dialog is the single permission prompt. The floating iOS-style
+  // sheet is only a fallback shown after a denial or when access is blocked.
+  if (!permission?.granted) {
+    const awaitingNativePrompt =
+      !permission ||
+      requesting ||
+      (permission.canAskAgain && !requestedPermission.current);
+
+    return (
+      <View style={styles.permissionScreen}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <StatusBar barStyle="light-content" />
+        {awaitingNativePrompt ? (
+          <Text style={styles.msgText}>Preparing camera…</Text>
+        ) : (
+          <Modal
+            transparent
+            visible
+            animationType="fade"
+            statusBarTranslucent
+            onRequestClose={handleDismissPermission}
+          >
+            <View style={styles.backdrop}>
+              <View style={styles.sheet}>
+                <View style={styles.sheetHeader}>
+                  <Text style={styles.sheetTitle}>Camera Access Needed</Text>
+                  <Text style={styles.sheetMessage}>
+                    {permission?.canAskAgain
+                      ? "Camera access is required to scan attendance QR codes."
+                      : "Camera access is blocked. Enable it in Settings to scan QR codes."}
+                  </Text>
+                </View>
+                <View style={styles.divider} />
+                <TouchableOpacity
+                  style={styles.sheetAction}
+                  activeOpacity={0.5}
+                  onPress={handleDismissPermission}
+                >
+                  <Text style={styles.sheetActionText}>Not Now</Text>
+                </TouchableOpacity>
+                <View style={styles.divider} />
+                <TouchableOpacity
+                  style={styles.sheetAction}
+                  activeOpacity={0.5}
+                  onPress={
+                    permission?.canAskAgain
+                      ? requestCameraAccess
+                      : () => Linking.openSettings()
+                  }
+                >
+                  <Text
+                    style={[styles.sheetActionText, styles.sheetActionPrimary]}
+                  >
+                    {permission?.canAskAgain ? "Allow" : "Open Settings"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
+        )}
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
@@ -212,7 +322,7 @@ export default function QRScanner() {
             <View style={styles.resultCard}>
               {error ? (
                 <>
-                  <Text style={styles.resultLabel}>Ã¢Å¡Â Ã¯Â¸Â Error</Text>
+                  <Text style={styles.resultLabel}>{"\u26A0\uFE0F Error"}</Text>
                   <Text style={styles.resultText}>{error}</Text>
                 </>
               ) : (
@@ -224,8 +334,8 @@ export default function QRScanner() {
                     ]}
                   >
                     {status === "late"
-                      ? "Ã°Å¸â€¢â€œ Marked Late"
-                      : "Ã¢Å“â€¦ Attendance Recorded"}
+                      ? "\uD83D\uDD52 Marked Late"
+                      : "\u2705 Attendance Recorded"}
                   </Text>
                   <Text style={styles.resultText}>
                     {status === "late"
@@ -271,29 +381,57 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  permissionInner: { alignItems: "center", paddingHorizontal: 40, gap: 16 },
-  permissionIcon: { fontSize: 64, marginBottom: 8 },
-  permissionTitle: {
-    color: "#fff",
-    fontSize: 24,
-    fontWeight: "700",
-    letterSpacing: -0.5,
-    textAlign: "center",
+  backdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 32,
   },
-  permissionSub: {
-    color: "rgba(255,255,255,0.5)",
-    fontSize: 15,
+  sheet: {
+    width: 270,
+    maxWidth: "100%",
+    borderRadius: 14,
+    overflow: "hidden",
+    backgroundColor: "#1C1C1E",
+  },
+  sheetHeader: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 18,
+    gap: 6,
+  },
+  sheetTitle: {
+    color: "#FFFFFF",
+    fontSize: 17,
+    fontWeight: "700",
     textAlign: "center",
+    letterSpacing: -0.2,
     lineHeight: 22,
   },
-  permissionBtn: {
-    backgroundColor: "#C8F04D",
-    paddingHorizontal: 32,
-    paddingVertical: 14,
-    borderRadius: 14,
-    marginTop: 8,
+  sheetMessage: {
+    color: "rgba(255,255,255,0.6)",
+    fontSize: 13,
+    lineHeight: 18,
+    textAlign: "center",
   },
-  permissionBtnText: { color: "#0D0D0D", fontSize: 16, fontWeight: "700" },
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: "#3A3A3C",
+  },
+  sheetAction: {
+    paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sheetActionText: {
+    color: "#0A84FF",
+    fontSize: 17,
+    fontWeight: "400",
+  },
+  sheetActionPrimary: {
+    fontWeight: "600",
+  },
   overlay: { flex: 1 },
   overlayTop: { flex: 1, backgroundColor: "rgba(0,0,0,0.65)" },
   overlayMiddle: { flexDirection: "row", height: SCAN_SIZE },
