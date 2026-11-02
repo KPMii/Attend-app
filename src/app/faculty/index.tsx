@@ -1,4 +1,4 @@
-﻿import { logoutAndRedirect } from "@/lib/navigation";
+import { logoutAndRedirect } from "@/lib/navigation";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -68,7 +68,7 @@ export default function FacultyHome() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.root}>
-        <StatusBar barStyle="light-content" backgroundColor="#305CDE" />
+        <StatusBar barStyle="light-content" />
 
         <View style={styles.header}>
           <Text style={styles.headerTitle}>

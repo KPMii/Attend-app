@@ -52,7 +52,7 @@ export default function AuditLog() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
         <Text style={styles.title}>Audit Log</Text>
         <Text style={styles.subtitle}>{totalCount} total entries</Text>
@@ -95,7 +95,7 @@ export default function AuditLog() {
           </View>
         )}
         ListEmptyComponent={
-          !loading ? <Text style={styles.empty}>No activity yet</Text> : null
+          !loading ? <Text style={styles.empty}>No activity yet</Text> : undefined
         }
       />
 

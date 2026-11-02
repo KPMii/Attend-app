@@ -1,7 +1,7 @@
-import * as Crypto from "expo-crypto";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
+  Alert,
   Animated,
   Dimensions,
   SafeAreaView,
@@ -16,7 +16,16 @@ import {
 import { useAuthStore } from "../../../stores/authStore";
 import { LazyQRCode } from "../../components/lazyQRCode";
 import { logAction } from "../../lib/audit";
-import { getDB, markSynced, saveSession } from "../../lib/db";
+import {
+  cacheSections,
+  cacheSubjects,
+  getCachedSections,
+  getCachedSubjects,
+  getDB,
+  getLocalSession,
+  markSynced,
+  saveSession,
+} from "../../lib/db";
 import { supabase } from "../../lib/supabase";
 
 const { width } = Dimensions.get("window");
@@ -33,6 +42,11 @@ async function saveSessionToLocal(session: SessionPayload) {
     expires_at: session.expiresAt,
     role: session.role,
     late_threshold_minutes: session.lateThresholdMinutes,
+    session_type: session.sessionType,
+    event_name: session.eventName,
+    section_id: session.sectionId,
+    subject_id: session.subjectId,
+    school_id: session.schoolId,
   });
   console.log("[SQLite] Save session locally:", session);
 }
@@ -102,8 +116,6 @@ type SessionPayload = {
   eventName: string | null;
 };
 
-const SECRET = process.env.EXPO_PUBLIC_QR_SECRET;
-
 function generateToken() {
   return Math.random().toString(36).substring(2, 10).toUpperCase();
 }
@@ -116,16 +128,40 @@ function buildQRPayload(session: SessionPayload): string {
   return JSON.stringify(session);
 }
 
-async function signPayload(
-  sessionId: string,
-  token: string,
-  expiresAt: string,
-): Promise<string> {
-  const data = `${sessionId}:${token}:${expiresAt}:${SECRET}`;
-  return await Crypto.digestStringAsync(
-    Crypto.CryptoDigestAlgorithm.SHA256,
-    data,
-  );
+async function extractFunctionError(error: unknown): Promise<string> {
+  const e = error as {
+    message?: string;
+    context?: { text?: () => Promise<string> };
+  };
+  if (e && typeof e === "object" && e.context && typeof e.context.text === "function") {
+    try {
+      const raw = await e.context.text();
+      try {
+        const parsed = JSON.parse(raw) as { error?: unknown; message?: unknown };
+        if (parsed && typeof parsed.error === "string") return parsed.error;
+        if (parsed && typeof parsed.message === "string") return parsed.message;
+      } catch {
+        // non-JSON body — fall through to raw text
+      }
+      if (raw) return raw;
+    } catch {
+      // ignore extraction failures
+    }
+  }
+  if (e && typeof e.message === "string" && e.message) return e.message;
+  return "Unknown error";
+}
+
+async function requestSignature(payload: SessionPayload): Promise<string> {
+  const { data, error } = await supabase.functions.invoke("sign-session", {
+    body: payload,
+  });
+  if (error) {
+    throw new Error(await extractFunctionError(error));
+  }
+  const result = typeof data === "string" ? JSON.parse(data) : data;
+  if (!result?.signature) throw new Error("No signature returned from sign-session");
+  return result.signature as string;
 }
 
 function CountdownRing({ seconds, total }: { seconds: number; total: number }) {
@@ -230,59 +266,97 @@ export default function QRGenerator() {
   const selectedRoomName = selectedSection?.room ?? "";
 
   useEffect(() => {
-    supabase
-      .from("subjects")
-      .select("id, name")
-      .order("name")
-      .then(({ data }) => {
-        if (data) setSubjects(data);
-      });
+    let cancelled = false;
 
-    supabase
-      .from("sections")
-      .select("id, name, room")
-      .order("name")
-      .then(({ data }) => {
-        if (data) setSections(data);
-      });
+    // 1) Show cached subjects/sections immediately (works offline).
+    (async () => {
+      try {
+        const [cachedSubjects, cachedSections] = await Promise.all([
+          getCachedSubjects(),
+          getCachedSections(),
+        ]);
+        if (cancelled) return;
+        if (cachedSubjects.length) setSubjects(cachedSubjects);
+        if (cachedSections.length) setSections(cachedSections);
+      } catch (err) {
+        console.log("[Catalog] Read cache failed:", err);
+      }
+    })();
+
+    // 2) Refresh from the network and update the cache when online.
+    (async () => {
+      try {
+        const [{ data: subjectsData }, { data: sectionsData }] =
+          await Promise.all([
+            supabase.from("subjects").select("id, name").order("name"),
+            supabase.from("sections").select("id, name, room").order("name"),
+          ]);
+
+        if (cancelled) return;
+
+        if (subjectsData?.length) {
+          setSubjects(subjectsData);
+          cacheSubjects(subjectsData).catch(() => {});
+        }
+        if (sectionsData?.length) {
+          setSections(sectionsData);
+          cacheSections(sectionsData).catch(() => {});
+        }
+      } catch (err) {
+        console.log("[Catalog] Fetch failed (offline?), using cache:", err);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  // Pre-fill from resumed session
+  // Pre-fill from resumed session (local first so it works offline)
   useEffect(() => {
     if (!resume) return;
-    supabase
-      .from("sessions")
-      .select("subject, room, event_name, session_type, section_id")
-      .eq("id", resume)
-      .single()
-      .then(({ data }) => {
-        if (!data) return;
-        setSessionType((data.session_type as SessionType) || "event");
-        if (data.session_type === "event") {
-          setEventName(data.event_name || data.subject);
-          setEventRoom(data.room);
-          setSelectedSectionId(data.section_id || null);
-        }
-      });
+
+    const apply = (data: {
+      subject: string;
+      room: string;
+      event_name: string | null;
+      session_type: string | null;
+      section_id: string | null;
+    }) => {
+      setSessionType((data.session_type as SessionType) || "event");
+      if (data.session_type === "event") {
+        setEventName(data.event_name || data.subject);
+        setEventRoom(data.room);
+        setSelectedSectionId(data.section_id || null);
+      }
+    };
+
+    (async () => {
+      const local = await getLocalSession(resume).catch(() => null);
+      if (local) apply(local);
+
+      try {
+        const { data } = await supabase
+          .from("sessions")
+          .select("subject, room, event_name, session_type, section_id")
+          .eq("id", resume)
+          .single();
+        if (data) apply(data);
+      } catch (err) {
+        console.log("[Resume] Remote fetch failed, using local:", err);
+      }
+    })();
   }, [resume]);
 
   const buildSession = async (t: string): Promise<SessionPayload> => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("school_id")
-      .eq("id", user?.id)
-      .single();
-    const schoolId = profile?.school_id ?? null;
+    const { userId, schoolId } = useAuthStore.getState();
+    const facultyId = userId ?? "unknown";
 
     const createdAt = new Date().toISOString();
     const expiresAt = new Date(
       Date.now() + parseInt(duration) * 60 * 1000,
     ).toISOString();
-    const signature = await signPayload(sessionId, t, expiresAt);
+    const signature = "";
 
     if (sessionType === "event") {
       return {
@@ -291,7 +365,7 @@ export default function QRGenerator() {
         subjectId: null,
         room: eventRoom,
         sectionId: selectedSectionId,
-        facultyId: user?.id ?? "unknown",
+        facultyId,
         token: t,
         createdAt,
         expiresAt,
@@ -310,7 +384,7 @@ export default function QRGenerator() {
       subjectId: selectedSubjectId,
       room: selectedRoomName,
       sectionId: selectedSectionId,
-      facultyId: user?.id ?? "unknown",
+      facultyId,
       token: t,
       createdAt,
       expiresAt,
@@ -330,11 +404,28 @@ export default function QRGenerator() {
       useNativeDriver: true,
     }).start(async () => {
       const newToken = generateToken();
+
+      let session: SessionPayload;
+      try {
+        session = await buildSession(newToken);
+        session.signature = await requestSignature(session);
+      } catch (err) {
+        // Offline: keep the last valid signed QR instead of showing an
+        // unsigned (forgery-vulnerable) code.
+        console.log("[TokenRotation] Signing failed (offline?), keeping last token:", err);
+        setSyncStatus("offline");
+        setCountdown(QR_INTERVAL);
+        Animated.timing(qrFadeAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }).start();
+        return;
+      }
+
       setToken(newToken);
       setCountdown(QR_INTERVAL);
       setRotationCount((c) => c + 1);
-
-      const session = await buildSession(newToken);
       setQrPayload(buildQRPayload(session));
 
       Animated.timing(qrFadeAnim, {
@@ -368,7 +459,22 @@ export default function QRGenerator() {
     setIsActive(true);
     setRotationCount(0);
 
-    const session = await buildSession(initialToken);
+    let session: SessionPayload;
+    try {
+      session = await buildSession(initialToken);
+      session.signature = await requestSignature(session);
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      console.log("[QR] Session signing failed:", reason);
+      setIsActive(false);
+      setSyncStatus("offline");
+      Alert.alert(
+        "Couldn't start session",
+        `QR signing failed: ${reason}`,
+      );
+      return;
+    }
+
     setQrPayload(buildQRPayload(session));
 
     setSyncStatus("syncing");
@@ -947,13 +1053,13 @@ const styles = StyleSheet.create({
   activeSession: { gap: 24, alignItems: "center" },
   sessionInfo: {
     width: "100%",
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: White,
     borderRadius: 18,
     padding: 18,
     gap: 4,
   },
   sessionSubject: { color: "#000", fontSize: 18, fontWeight: "700" },
-  sessionRoom: { color: "rgba(255,255,255,0.45)", fontSize: 14 },
+  sessionRoom: { color: Black, fontSize: 14 },
   sessionSettings: {
     backgroundColor: White,
     borderRadius: 32,
@@ -969,9 +1075,9 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 8,
   },
-  sessionMetaText: { color: "rgba(255,255,255,0.35)", fontSize: 13 },
+  sessionMetaText: { color: Black, fontSize: 13 },
   sessionTimer: {
-    color: "#C8F04D",
+    color: Black,
     fontSize: 18,
     fontWeight: "800",
     fontVariant: ["tabular-nums"],
@@ -997,7 +1103,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 20,
-    backgroundColor: "rgba(255,255,255,0.04)",
+    backgroundColor: Blue,
     borderRadius: 20,
     padding: 20,
     width: "100%",
@@ -1005,10 +1111,10 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.07)",
   },
   countdownInfo: { flex: 1, gap: 4 },
-  countdownLabel: { color: "rgba(255,255,255,0.5)", fontSize: 13 },
+  countdownLabel: { color: Black, fontSize: 13 },
   rotationCount: { color: "#fff", fontSize: 18, fontWeight: "700" },
   tokenText: {
-    color: "rgba(255,255,255,0.25)",
+    color: Black,
     fontSize: 11,
     fontFamily: "monospace",
   },

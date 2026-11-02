@@ -68,7 +68,7 @@ export default function EventsList() {
           </View>
         )}
         ListEmptyComponent={
-          !loading ? <Text style={styles.empty}>No events yet</Text> : null
+          !loading ? <Text style={styles.empty}>No events yet</Text> : undefined
         }
       />
     </SafeAreaView>

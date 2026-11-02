@@ -1,8 +1,10 @@
-import * as Crypto from "expo-crypto";
-import { Stack } from "expo-router";
-import { useState } from "react";
+import { useCameraPermissions } from "expo-camera";
+import { Stack, useRouter } from "expo-router";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Dimensions,
+  Linking,
+  Modal,
   StatusBar,
   StyleSheet,
   Text,
@@ -19,8 +21,6 @@ import { supabase } from "../../../lib/supabase";
 
 const { width } = Dimensions.get("window");
 const SCAN_SIZE = width * 0.7;
-
-const SECRET = process.env.EXPO_PUBLIC_QR_SECRET;
 
 type SessionPayload = {
   id: string;
@@ -47,20 +47,53 @@ function checkIfLate(session: SessionPayload): boolean {
   return scannedAt - sessionStart > thresholdMs;
 }
 
-async function verifySignature(session: SessionPayload): Promise<boolean> {
-  const data = `${session.id}:${session.token}:${session.expiresAt}:${SECRET}`;
-  const expectedSignature = await Crypto.digestStringAsync(
-    Crypto.CryptoDigestAlgorithm.SHA256,
-    data,
-  );
-  return expectedSignature === session.signature;
+function mapVerifyReason(reason: string): string {
+  switch (reason) {
+    case "expired":
+      return "This session has expired";
+    case "not_enrolled":
+      return "You are not enrolled in this section";
+    case "wrong_school":
+      return "This session belongs to a different school";
+    case "invalid_signature":
+    default:
+      return "Invalid or tampered QR code";
+  }
 }
 
 export default function QRScanner() {
+  const router = useRouter();
+  const [permission, requestPermission] = useCameraPermissions();
+  const requestedPermission = useRef(false);
   const [scanned, setScanned] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [status, setStatus] = useState<"present" | "late" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [requesting, setRequesting] = useState(false);
+
+  // Request camera access and keep the loading state visible while the OS
+  // prompt is on screen, so our own sheet never shows underneath it.
+  const requestCameraAccess = useCallback(() => {
+    setRequesting(true);
+    requestPermission()
+      .then(() => setRequesting(false))
+      .catch(() => setRequesting(false));
+  }, [requestPermission]);
+
+  // Option B: trigger the native permission prompt automatically on first
+  // open so the OS dialog is the single, canonical permission prompt. The
+  // floating sheet below is only a fallback after denial or when blocked.
+  useEffect(() => {
+    if (
+      permission &&
+      !permission.granted &&
+      permission.canAskAgain &&
+      !requestedPermission.current
+    ) {
+      requestedPermission.current = true;
+      requestCameraAccess();
+    }
+  }, [permission, requestCameraAccess]);
 
   const handleScanned = async ({ data }: { data: string }) => {
     if (scanned) return;
@@ -71,11 +104,13 @@ export default function QRScanner() {
     try {
       const session: SessionPayload = JSON.parse(data);
 
+      // Use cached identity — supabase.auth.getUser() hits the network and
+      // throws when offline, which would abort the scan before saving.
+      const userId = useAuthStore.getState().userId;
+      if (!userId) throw new Error("Not logged in");
+
       // Rate limit: prevent spam scanning (max 3 scans in 30s)
-      const {
-        data: { user: rateUser },
-      } = await supabase.auth.getUser();
-      const rateKey = `qr_scan_${rateUser?.id ?? "anon"}`;
+      const rateKey = `qr_scan_${userId}`;
       const { allowed, retryAfterMs } = await checkRateLimit(rateKey, {
         maxAttempts: 3,
         windowMs: 30 * 1000,
@@ -85,43 +120,17 @@ export default function QRScanner() {
         throw new Error(`Slow down! Try again in ${secs}s.`);
       }
 
-      // 1. Verify the QR hasn't been tampered with or forged
-      const isValid = await verifySignature(session);
-      if (!isValid) {
-        throw new Error("Invalid or tampered QR code");
-      }
-
-      // 2. Reject expired sessions outright
+      // 1. Local-only quick rejects (the server re-verifies authoritatively).
       if (new Date(session.expiresAt).getTime() < Date.now()) {
         throw new Error("This session has expired");
       }
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not logged in");
-
-      await recordAttempt(rateKey);
-
-      // 3. Multi-tenant guard: block cross-school attendance
       const studentSchoolId = useAuthStore.getState().schoolId;
       if (session.schoolId && session.schoolId !== studentSchoolId) {
         throw new Error("This session belongs to a different school");
       }
 
-      // 4. Roster check only for CLASS sessions, events have no roster
-      if (session.sessionType === "class" && session.sectionId) {
-        const { data: enrollment } = await supabase
-          .from("section_enrollments")
-          .select("id")
-          .eq("section_id", session.sectionId)
-          .eq("student_id", user.id)
-          .maybeSingle();
-
-        if (!enrollment) {
-          throw new Error("You are not enrolled in this section");
-        }
-      }
+      await recordAttempt(rateKey);
 
       const isLate = checkIfLate(session);
       setStatus(isLate ? "late" : "present");
@@ -129,32 +138,54 @@ export default function QRScanner() {
       const attendanceId = `att_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
       const scannedAt = new Date().toISOString();
 
-      // 5. Save locally first (offline-first)
+      // 2. Server-side verification + recording. The HMAC secret lives only on
+      //    the backend, so the signature cannot be forged client-side. A
+      //    network failure is treated as offline and the record is queued.
+      let recordedOnServer = false;
+      let rejection: string | null = null;
+      try {
+        const { data: res, error: fnError } = await supabase.functions.invoke(
+          "verify-session",
+          {
+            body: {
+              session,
+              attendance: {
+                id: attendanceId,
+                session_id: session.id,
+                scanned_at: scannedAt,
+              },
+            },
+          },
+        );
+
+        const result = typeof res === "string" ? JSON.parse(res) : res;
+
+        if (!fnError && result?.valid === false) {
+          rejection = mapVerifyReason(result.reason);
+        } else if (!fnError && result?.valid === true) {
+          recordedOnServer = true;
+        }
+      } catch (invokeErr) {
+        console.log("[Scanner] verify-session unavailable (offline?):", invokeErr);
+      }
+
+      if (rejection) {
+        throw new Error(rejection);
+      }
+
+      // 3. Record locally (offline-first). If the server already recorded it,
+      //    mark it synced so it isn't re-queued.
       await saveAttendance({
         id: attendanceId,
         session_id: session.id,
-        student_id: user.id,
+        student_id: userId,
         scanned_at: scannedAt,
         status: isLate ? "late" : "present",
         token_used: session.token,
+        payload: data,
       });
-
-      // 6. Try syncing immediately, don't block confirmation
-      try {
-        const { error: insertError } = await supabase
-          .from("attendance")
-          .insert({
-            id: attendanceId,
-            session_id: session.id,
-            student_id: user.id,
-            scanned_at: scannedAt,
-            status: isLate ? "late" : "present",
-            token_used: session.token,
-          });
-        if (insertError) throw insertError;
+      if (recordedOnServer) {
         await markSynced("attendance", attendanceId);
-      } catch (syncErr) {
-        console.log("[Attendance] Queued for later sync:", syncErr);
       }
     } catch (err) {
       console.error("Attendance error:", err);
@@ -172,6 +203,85 @@ export default function QRScanner() {
     setStatus(null);
     setError(null);
   };
+
+  // iOS-style "Don't Allow" / "Not Now": leave the scanner. Fall back to the
+  // student home when there is no history (e.g. deep-linked into the scanner).
+  const handleDismissPermission = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/student");
+    }
+  };
+
+  // Camera permission gate. expo-camera's CameraView renders a black preview
+  // when the CAMERA permission has not been granted, so we must request it
+  // before mounting the camera.
+  //
+  // Option B: the OS prompt is triggered automatically on first open, so the
+  // native dialog is the single permission prompt. The floating iOS-style
+  // sheet is only a fallback shown after a denial or when access is blocked.
+  if (!permission?.granted) {
+    const awaitingNativePrompt =
+      !permission ||
+      requesting ||
+      (permission.canAskAgain && !requestedPermission.current);
+
+    return (
+      <View style={styles.permissionScreen}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <StatusBar barStyle="light-content" />
+        {awaitingNativePrompt ? (
+          <Text style={styles.msgText}>Preparing camera…</Text>
+        ) : (
+          <Modal
+            transparent
+            visible
+            animationType="fade"
+            statusBarTranslucent
+            onRequestClose={handleDismissPermission}
+          >
+            <View style={styles.backdrop}>
+              <View style={styles.sheet}>
+                <View style={styles.sheetHeader}>
+                  <Text style={styles.sheetTitle}>Camera Access Needed</Text>
+                  <Text style={styles.sheetMessage}>
+                    {permission?.canAskAgain
+                      ? "Camera access is required to scan attendance QR codes."
+                      : "Camera access is blocked. Enable it in Settings to scan QR codes."}
+                  </Text>
+                </View>
+                <View style={styles.divider} />
+                <TouchableOpacity
+                  style={styles.sheetAction}
+                  activeOpacity={0.5}
+                  onPress={handleDismissPermission}
+                >
+                  <Text style={styles.sheetActionText}>Not Now</Text>
+                </TouchableOpacity>
+                <View style={styles.divider} />
+                <TouchableOpacity
+                  style={styles.sheetAction}
+                  activeOpacity={0.5}
+                  onPress={
+                    permission?.canAskAgain
+                      ? requestCameraAccess
+                      : () => Linking.openSettings()
+                  }
+                >
+                  <Text
+                    style={[styles.sheetActionText, styles.sheetActionPrimary]}
+                  >
+                    {permission?.canAskAgain ? "Allow" : "Open Settings"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
+        )}
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -212,7 +322,7 @@ export default function QRScanner() {
             <View style={styles.resultCard}>
               {error ? (
                 <>
-                  <Text style={styles.resultLabel}>Ã¢Å¡Â Ã¯Â¸Â Error</Text>
+                  <Text style={styles.resultLabel}>{"\u26A0\uFE0F Error"}</Text>
                   <Text style={styles.resultText}>{error}</Text>
                 </>
               ) : (
@@ -224,8 +334,8 @@ export default function QRScanner() {
                     ]}
                   >
                     {status === "late"
-                      ? "Ã°Å¸â€¢â€œ Marked Late"
-                      : "Ã¢Å“â€¦ Attendance Recorded"}
+                      ? "\uD83D\uDD52 Marked Late"
+                      : "\u2705 Attendance Recorded"}
                   </Text>
                   <Text style={styles.resultText}>
                     {status === "late"
@@ -271,29 +381,57 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  permissionInner: { alignItems: "center", paddingHorizontal: 40, gap: 16 },
-  permissionIcon: { fontSize: 64, marginBottom: 8 },
-  permissionTitle: {
-    color: "#fff",
-    fontSize: 24,
-    fontWeight: "700",
-    letterSpacing: -0.5,
-    textAlign: "center",
+  backdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 32,
   },
-  permissionSub: {
-    color: "rgba(255,255,255,0.5)",
-    fontSize: 15,
+  sheet: {
+    width: 270,
+    maxWidth: "100%",
+    borderRadius: 14,
+    overflow: "hidden",
+    backgroundColor: "#1C1C1E",
+  },
+  sheetHeader: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 18,
+    gap: 6,
+  },
+  sheetTitle: {
+    color: "#FFFFFF",
+    fontSize: 17,
+    fontWeight: "700",
     textAlign: "center",
+    letterSpacing: -0.2,
     lineHeight: 22,
   },
-  permissionBtn: {
-    backgroundColor: "#C8F04D",
-    paddingHorizontal: 32,
-    paddingVertical: 14,
-    borderRadius: 14,
-    marginTop: 8,
+  sheetMessage: {
+    color: "rgba(255,255,255,0.6)",
+    fontSize: 13,
+    lineHeight: 18,
+    textAlign: "center",
   },
-  permissionBtnText: { color: "#0D0D0D", fontSize: 16, fontWeight: "700" },
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: "#3A3A3C",
+  },
+  sheetAction: {
+    paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sheetActionText: {
+    color: "#0A84FF",
+    fontSize: 17,
+    fontWeight: "400",
+  },
+  sheetActionPrimary: {
+    fontWeight: "600",
+  },
   overlay: { flex: 1 },
   overlayTop: { flex: 1, backgroundColor: "rgba(0,0,0,0.65)" },
   overlayMiddle: { flexDirection: "row", height: SCAN_SIZE },

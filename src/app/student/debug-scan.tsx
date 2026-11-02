@@ -1,4 +1,3 @@
-import * as Crypto from "expo-crypto";
 import { Stack } from "expo-router";
 import { useState } from "react";
 import {
@@ -13,8 +12,6 @@ import {
 } from "react-native";
 import { markSynced, saveAttendance } from "../../lib/db";
 import { supabase } from "../../lib/supabase";
-
-const SECRET = process.env.EXPO_PUBLIC_QR_SECRET;
 
 type SessionPayload = {
   id: string;
@@ -36,15 +33,6 @@ function checkIfLate(session: SessionPayload): boolean {
   return scannedAt - sessionStart > thresholdMs;
 }
 
-async function verifySignature(session: SessionPayload): Promise<boolean> {
-  const data = `${session.id}:${session.token}:${session.expiresAt}:${SECRET}`;
-  const expectedSignature = await Crypto.digestStringAsync(
-    Crypto.CryptoDigestAlgorithm.SHA256,
-    data,
-  );
-  return expectedSignature === session.signature;
-}
-
 export default function DebugScan() {
   const [qrData, setQrData] = useState("");
   const [log, setLog] = useState<string[]>([]);
@@ -61,15 +49,7 @@ export default function DebugScan() {
       const session: SessionPayload = JSON.parse(qrData);
       addLog(`✅ Parsed session: ${session.id}`);
 
-      addLog("🔐 Verifying signature...");
-      const isValid = await verifySignature(session);
-      if (!isValid) {
-        addLog("Signature mismatch, QR is invalid or tampered");
-        setLoading(false);
-        return;
-      }
-      addLog("Signature valid");
-
+      addLog("🔐 Verifying signature server-side...");
       if (new Date(session.expiresAt).getTime() < Date.now()) {
         addLog("Session has expired");
         setLoading(false);
@@ -102,22 +82,30 @@ export default function DebugScan() {
         scanned_at: scannedAt,
         status: isLate ? "late" : "present",
         token_used: session.token,
+        payload: qrData,
       });
       addLog("✅ Saved to local SQLite");
 
-      addLog("☁️ Syncing to Supabase...");
+      addLog("☁️ Verifying + syncing via verify-session...");
       try {
-        const { error: insertError } = await supabase
-          .from("attendance")
-          .insert({
-            id: attendanceId,
-            session_id: session.id,
-            student_id: user.id,
-            scanned_at: scannedAt,
-            status: isLate ? "late" : "present",
-            token_used: session.token,
-          });
-        if (insertError) throw insertError;
+        const { data: res, error: fnError } = await supabase.functions.invoke(
+          "verify-session",
+          {
+            body: {
+              session,
+              attendance: {
+                id: attendanceId,
+                session_id: session.id,
+                scanned_at: scannedAt,
+              },
+            },
+          },
+        );
+        if (fnError) throw fnError;
+        const result = typeof res === "string" ? JSON.parse(res) : res;
+        if (result && result.valid === false) {
+          throw new Error(`Rejected: ${result.reason}`);
+        }
         await markSynced("attendance", attendanceId);
         addLog("Synced to Supabase successfully!");
       } catch (syncErr: any) {

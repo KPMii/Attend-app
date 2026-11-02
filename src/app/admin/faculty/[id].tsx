@@ -34,7 +34,7 @@ export default function FacultyDetail() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  const [showPassword, setShowPassword] = useState(false)
+  const [showPassword, setShowPassword] = useState(false);
 
   const [newPassword, setNewPassword] = useState("");
   const [resetting, setResetting] = useState(false);
@@ -140,7 +140,7 @@ export default function FacultyDetail() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={styles.flex}
@@ -151,7 +151,10 @@ export default function FacultyDetail() {
             onPress={() => router.back()}
             activeOpacity={0.7}
           >
-            <Image style={[{width: 24, height: 24}]} source={require("../../assets/icons/back.png")}/>
+            <Image
+              style={[{ width: 24, height: 24 }]}
+              source={require("../../assets/icons/back.png")}
+            />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Faculty Detail</Text>
           <View style={styles.headerSpacer} />
@@ -229,12 +232,13 @@ export default function FacultyDetail() {
               <Text style={styles.label}>NEW PASSWORD</Text>
 
               <View style={styles.inputContainer}>
-
                 <TextInput
                   style={styles.input}
                   value={newPassword}
                   onChangeText={setNewPassword}
-                  placeholder={showPassword ? "At least 6 characters" : "••••••••"}
+                  placeholder={
+                    showPassword ? "At least 6 characters" : "••••••••"
+                  }
                   placeholderTextColor="#AEB2C2"
                   secureTextEntry={!showPassword}
                   autoCapitalize="none"
@@ -245,13 +249,12 @@ export default function FacultyDetail() {
                   style={styles.eyeButton}
                   onPress={() => setShowPassword(!showPassword)}
                   activeOpacity={0.7}
-                  >
+                >
                   <Image
                     source={require("../../assets/icons/eye.png")}
-                     style={styles.eyeIcon}
+                    style={styles.eyeIcon}
                   />
                 </TouchableOpacity>
-                
               </View>
             </View>
 
@@ -272,7 +275,6 @@ export default function FacultyDetail() {
           </View>
 
           <View style={styles.sectionCard}>
-
             {!showDeleteConfirm ? (
               <TouchableOpacity
                 style={styles.dangerButton}

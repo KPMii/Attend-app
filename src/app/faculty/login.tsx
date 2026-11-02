@@ -20,6 +20,7 @@ import {
   recordAttempt,
 } from "../../lib/rateLimit";
 import { supabase } from "../../lib/supabase";
+import { facultyLoginSchema } from "../../lib/validation";
 
 export default function FacultyLogin() {
   const router = useRouter();
@@ -34,11 +35,19 @@ export default function FacultyLogin() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-  const canSubmit = isValidEmail && password.length > 0 && !loading;
+  const canSubmit =
+    facultyLoginSchema.safeParse({ email: email.trim(), password }).success &&
+    !loading;
 
   const handleLogin = async () => {
-    if (!canSubmit) return;
+    const parsed = facultyLoginSchema.safeParse({
+      email: email.trim(),
+      password,
+    });
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? "Invalid email or password.");
+      return;
+    }
 
     // Rate limit: max 5 attempts per minute per email
     const rateKey = `faculty_login_${email.trim().toLowerCase()}`;
@@ -53,7 +62,7 @@ export default function FacultyLogin() {
     setError(null);
 
     try {
-      await facultyLogin(email.trim(), password);
+      await facultyLogin(parsed.data.email, parsed.data.password);
       await clearRateLimit(rateKey);
 
       const {

@@ -94,7 +94,7 @@ export default function FacultySessionHistory() {
           </TouchableOpacity>
         )}
         ListEmptyComponent={
-          !loading ? <Text style={styles.empty}>No sessions yet</Text> : null
+          !loading ? <Text style={styles.empty}>No sessions yet</Text> : undefined
         }
       />
 

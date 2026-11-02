@@ -18,6 +18,7 @@ import {
   clearRateLimit,
   recordAttempt,
 } from "../../lib/rateLimit";
+import { studentLoginSchema } from "../../lib/validation";
 
 export default function StudentLogin() {
   const router = useRouter();
@@ -32,11 +33,22 @@ export default function StudentLogin() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isValidSchoolId = /^[A-Za-z0-9]{5,12}$/.test(schoolIdNo.trim());
-  const canSubmit = isValidSchoolId && password.length > 0 && !loading;
+  const isValidSchoolId = studentLoginSchema.shape.schoolIdNo.safeParse(
+    schoolIdNo.trim(),
+  ).success;
+  const canSubmit =
+    studentLoginSchema.safeParse({ schoolIdNo: schoolIdNo.trim(), password })
+      .success && !loading;
 
   const handleLogin = async () => {
-    if (!canSubmit) return;
+    const parsed = studentLoginSchema.safeParse({
+      schoolIdNo: schoolIdNo.trim(),
+      password,
+    });
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? "Invalid School ID or password.");
+      return;
+    }
 
     // Rate limit: max 5 attempts per minute per school ID
     const rateKey = `student_login_${schoolIdNo.trim().toUpperCase()}`;
@@ -51,7 +63,7 @@ export default function StudentLogin() {
     setError(null);
 
     try {
-      await studentLogin(schoolIdNo.trim(), password);
+      await studentLogin(parsed.data.schoolIdNo, parsed.data.password);
       await clearRateLimit(rateKey);
 
       // Wait for auth store to hydrate so we know the role

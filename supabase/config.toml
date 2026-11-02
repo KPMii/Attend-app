@@ -20,3 +20,13 @@ entrypoint = "./functions/create-faculty/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/create-faculty/*.html" ]
+
+[functions.sign-session]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/sign-session/index.ts"
+
+[functions.verify-session]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/verify-session/index.ts"

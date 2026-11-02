@@ -29,7 +29,7 @@ export default function StudentSettings() {
   return (
     <SafeAreaView style={styles.container}>
       <Stack.Screen options={{ title: "Settings" }} />
-      <StatusBar barStyle="dark-content" backgroundColor={BG} />
+      <StatusBar barStyle="dark-content" />
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.title}>Settings</Text>
 

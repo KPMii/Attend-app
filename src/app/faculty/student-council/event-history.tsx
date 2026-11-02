@@ -98,7 +98,7 @@ export default function EventHistory() {
           </View>
         )}
         ListEmptyComponent={
-          !loading ? <Text style={styles.empty}>No events yet</Text> : null
+          !loading ? <Text style={styles.empty}>No events yet</Text> : undefined
         }
       />
 

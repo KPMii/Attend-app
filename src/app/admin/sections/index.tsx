@@ -10,6 +10,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useAuthStore } from "../../../../stores/authStore";
+import { cacheSections, getCachedSections } from "../../../lib/db";
 import { PAGE_SIZE, getRange } from "../../../lib/pagination";
 import { supabase } from "../../../lib/supabase";
 
@@ -25,22 +27,9 @@ export default function AdminSections() {
   const [page, setPage] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
 
-  const getMySchoolId = async (): Promise<string | null> => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return null;
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("school_id")
-      .eq("id", user.id)
-      .single();
-    return profile?.school_id ?? null;
-  };
-
   const fetchSections = async () => {
     setLoading(true);
-    const schoolId = await getMySchoolId();
+    const schoolId = useAuthStore.getState().schoolId;
     if (!schoolId) {
       setError("No school assigned to this account.");
       setLoading(false);
@@ -48,15 +37,26 @@ export default function AdminSections() {
     }
     const { from, to } = getRange(page);
 
-    const { data, count } = await supabase
-      .from("sections")
-      .select("id, name, room", { count: "exact" })
-      .eq("school_id", schoolId)
-      .order("name")
-      .range(from, to);
+    try {
+      const { data, count } = await supabase
+        .from("sections")
+        .select("id, name, room", { count: "exact" })
+        .eq("school_id", schoolId)
+        .order("name")
+        .range(from, to);
 
-    if (data) setSections(data);
-    setTotalCount(count ?? 0);
+      if (data) {
+        setSections(data);
+        cacheSections(data).catch(() => {});
+      }
+      setTotalCount(count ?? 0);
+    } catch (err) {
+      console.log("[Sections] Remote fetch failed, using cache:", err);
+      const cached = await getCachedSections().catch(() => []);
+      setSections(cached);
+      setTotalCount(cached.length);
+    }
+
     setLoading(false);
   };
 
@@ -68,12 +68,10 @@ export default function AdminSections() {
     if (!newName.trim() || !newRoom.trim()) return;
     setError(null);
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
+    const userId = useAuthStore.getState().userId;
+    if (!userId) return;
 
-    const schoolId = await getMySchoolId();
+    const schoolId = useAuthStore.getState().schoolId;
     if (!schoolId) {
       setError("No school assigned to this account.");
       return;
@@ -82,7 +80,7 @@ export default function AdminSections() {
     const { error: insertError } = await supabase.from("sections").insert({
       name: newName.trim(),
       room: newRoom.trim(),
-      faculty_id: user.id,
+      faculty_id: userId,
       school_id: schoolId,
     });
 
@@ -101,15 +99,24 @@ export default function AdminSections() {
   };
 
   const loadSections = async () => {
-    const {data, error} = await supabase
-      .from("sections")
-      .select("*")
+    try {
+      const { data, error } = await supabase
+        .from("sections")
+        .select("id, name, room");
 
-      if(error){
-        console.error()
+      if (error) {
+        console.error("[Sections] loadSections error:", error);
       }
 
-    setSections(data ?? []);
+      if (data?.length) {
+        setSections(data);
+        cacheSections(data).catch(() => {});
+      }
+    } catch (err) {
+      console.log("[Sections] loadSections failed, using cache:", err);
+      const cached = await getCachedSections().catch(() => []);
+      if (cached.length) setSections(cached);
+    }
   }
 
   useFocusEffect(
@@ -120,7 +127,7 @@ export default function AdminSections() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
         <Text style={styles.title}>Sections</Text>
       </View>
@@ -166,7 +173,7 @@ export default function AdminSections() {
           </TouchableOpacity>
         )}
         ListEmptyComponent={
-          !loading ? <Text style={styles.empty}>No sections yet</Text> : null
+          !loading ? <Text style={styles.empty}>No sections yet</Text> : undefined
         }
       />
 

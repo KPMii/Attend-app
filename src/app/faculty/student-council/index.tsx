@@ -41,7 +41,7 @@ export default function StudentCouncilHome() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.root}>
-        <StatusBar barStyle="light-content" backgroundColor="#4361EE" />
+        <StatusBar barStyle="light-content" />
 
         <View style={styles.header}>
           <Text style={styles.headerTitle}>

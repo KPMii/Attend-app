@@ -63,7 +63,7 @@ export default function AdminSubjectDetail() {
   return (
     <SafeAreaView style={styles.container}>
       <Stack.Screen options={{ title: subjectName || "Subject" }} />
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" />
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.title}>{subjectName}</Text>
 
